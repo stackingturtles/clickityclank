@@ -1,0 +1,31 @@
+{
+  "name": "clickityclank",
+  "version": "0.1.0",
+  "description": "Project/agent Discord + OpenClaw workspace provisioning CLI",
+  "type": "module",
+  "bin": {
+    "clickityclank": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --target node20 --out-dir dist --clean",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.10",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}
