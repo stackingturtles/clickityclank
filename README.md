@@ -107,7 +107,7 @@ clickityclank project create linearstories \
 
 - `clickityclank init [--json]`
 - `clickityclank doctor [--json] [--discord-token <token>]`
-- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--plan] [--dry-run] [--json]`
+- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
 - `clickityclank project list [--json]`
 - `clickityclank project show <name> [--json]`
@@ -161,9 +161,8 @@ clickityclank project create sneakerscan \
 
 - Machine-global state: `~/.openclaw/clickityclank/state.json`
 - OpenClaw config: `~/.openclaw/openclaw.json`
-- Workspace convention (current MVP): `~/.openclaw/workspace-<project>`
-- Planned project-role workspace convention: `~/.openclaw/workspace-<project>-<channel>`
-- Planned template root: `~/.openclaw/clickityclank/templates/roles/`
+- Workspace convention: `~/.openclaw/workspace-<project>-<channel>`
+- Template root: `~/.openclaw/clickityclank/templates/roles/`
 
 ---
 

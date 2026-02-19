@@ -18,7 +18,7 @@ export type GlobalState = {
       guildId: string;
       categoryId: string;
       channelIds: Record<string, string>;
-      workspacePath: string;
+      workspacePaths: Record<string, string>;
       maps: MapEntry[];
       updatedAt: string;
     }

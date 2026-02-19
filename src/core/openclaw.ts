@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
 import { OPENCLAW_CONFIG, workspacePathFor } from "./paths.js";
 import { fileExists, readJson, writeJsonAtomic } from "./io.js";
@@ -28,10 +27,35 @@ export async function backupOpenClawConfig() {
   return backup;
 }
 
-export function validateAgentsExist(cfg: OpenClawConfig, maps: MapEntry[]) {
+export function ensureAgents(cfg: OpenClawConfig, maps: MapEntry[], project: string, createMissingAgents?: boolean) {
   const ids = new Set((cfg.agents?.list ?? []).map((a: any) => a.id));
+  const emojiMap: Record<string, string> = {
+    frontend: "🎨",
+    fe: "🎨",
+    backend: "⚙️",
+    be: "⚙️",
+    qa: "🧪",
+    handoff: "🤝",
+    release: "🚀",
+    mobile: "📱"
+  };
+
   for (const m of maps) {
-    if (!ids.has(m.agentId)) throw new Error(`Unknown agent id: ${m.agentId}`);
+    if (ids.has(m.agentId)) continue;
+    if (!createMissingAgents) throw new Error(`Unknown agent id: ${m.agentId}`);
+
+    const channel = m.channel;
+    const ws = workspacePathFor(project, channel);
+    cfg.agents.list.push({
+      id: m.agentId,
+      workspace: ws,
+      identity: {
+        name: `${project}-${channel}`,
+        theme: `${channel} specialist for ${project}`,
+        emoji: emojiMap[channel] ?? "🤖"
+      }
+    });
+    ids.add(m.agentId);
   }
 }
 
@@ -60,17 +84,12 @@ export function upsertProjectBindings(
       }
     });
   }
-
-  cfg.agents = cfg.agents || {};
-  cfg.agents.workspaces = cfg.agents.workspaces || {};
-  cfg.agents.workspaces[project] = workspacePathFor(project);
 }
 
 export function removeProjectBindings(cfg: OpenClawConfig, project: string) {
   cfg.bindings = (cfg.bindings || []).filter(
     (b: any) => !(b?.match?.channel === "discord" && b?.match?.projectTag === project)
   );
-  if (cfg?.agents?.workspaces?.[project]) delete cfg.agents.workspaces[project];
 }
 
 export async function saveOpenClawConfig(cfg: OpenClawConfig) {
@@ -82,14 +101,14 @@ export async function restoreOpenClawBackup(backupPath: string) {
   await fs.copyFile(backupPath, OPENCLAW_CONFIG);
 }
 
-export async function ensureWorkspace(project: string) {
-  const ws = workspacePathFor(project);
+export async function ensureWorkspace(project: string, channel: string) {
+  const ws = workspacePathFor(project, channel);
   await fs.mkdir(ws, { recursive: true });
   return ws;
 }
 
-export async function deleteWorkspace(project: string) {
-  const ws = workspacePathFor(project);
+export async function deleteWorkspace(project: string, channel: string) {
+  const ws = workspacePathFor(project, channel);
   await fs.rm(ws, { recursive: true, force: true });
   return ws;
 }

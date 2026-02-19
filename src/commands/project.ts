@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { Command } from "commander";
 import { readManifest } from "../core/io.js";
 import { loadState, saveState } from "../core/state.js";
@@ -7,21 +6,17 @@ import { parseMapFlags, parseManifest, validateMaps } from "../core/mapping.js";
 import {
   backupOpenClawConfig,
   deleteWorkspace,
+  ensureAgents,
   ensureWorkspace,
   loadOpenClawConfig,
   removeProjectBindings,
   restoreOpenClawBackup,
   saveOpenClawConfig,
-  upsertProjectBindings,
-  validateAgentsExist
+  upsertProjectBindings
 } from "../core/openclaw.js";
-import {
-  createCategory,
-  createTextChannel,
-  deleteChannel,
-  listGuildChannels
-} from "../core/discord.js";
+import { createCategory, createTextChannel, deleteChannel, listGuildChannels } from "../core/discord.js";
 import { workspacePathFor } from "../core/paths.js";
+import { applyTemplates } from "../core/templates.js";
 
 function getToken(cmd: any) {
   return cmd.discordToken || process.env.CLICKITYCLANK_DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
@@ -54,6 +49,8 @@ export function registerProject(program: Command) {
     )
     .option("--maps-file <path>")
     .option("--discord-token <token>")
+    .option("--create-missing-agents")
+    .option("--overwrite-templates")
     .option("--dry-run")
     .option("--plan")
     .option("--json")
@@ -63,13 +60,15 @@ export function registerProject(program: Command) {
 
       const { maps } = await resolveMaps(opts);
       const cfg = await loadOpenClawConfig();
-      validateAgentsExist(cfg, maps);
+      ensureAgents(cfg, maps, name, !!opts.createMissingAgents);
 
       const plan = emptyPlan();
       plan.discord.create.push(`category:${name}`);
-      for (const m of maps) plan.discord.create.push(`channel:${name}/${m.channel}`);
-      plan.openclaw.patch.push(`bindings for ${name}`);
-      plan.filesystem.create.push(workspacePathFor(name));
+      for (const m of maps) {
+        plan.discord.create.push(`channel:${name}/${m.channel}`);
+        plan.filesystem.create.push(workspacePathFor(name, m.channel));
+        plan.openclaw.patch.push(`binding:${name}/${m.channel}->${m.agentId}`);
+      }
 
       if (opts.plan || opts.dryRun) {
         if (opts.json) return printJson({ ok: true, plan });
@@ -82,13 +81,27 @@ export function registerProject(program: Command) {
       if (!category) category = await createCategory(token, opts.guildId, name);
 
       const channelIds: Record<string, string> = {};
+      const workspacePaths: Record<string, string> = {};
+      const templateActions: string[] = [];
+
       for (const m of maps) {
         const existing = channels.find((c) => c.type === 0 && c.parent_id === category.id && c.name === m.channel);
         const created = existing ?? (await createTextChannel(token, opts.guildId, category.id, m.channel));
         channelIds[m.channel] = created.id;
+
+        const ws = await ensureWorkspace(name, m.channel);
+        workspacePaths[m.channel] = ws;
+        templateActions.push(
+          ...(await applyTemplates({
+            project: name,
+            channel: m.channel,
+            agentId: m.agentId,
+            workspacePath: ws,
+            overwrite: !!opts.overwriteTemplates
+          }))
+        );
       }
 
-      const ws = await ensureWorkspace(name);
       const backup = await backupOpenClawConfig();
       try {
         upsertProjectBindings(cfg, name, opts.guildId, channelIds, maps);
@@ -103,13 +116,13 @@ export function registerProject(program: Command) {
         guildId: opts.guildId,
         categoryId: category.id,
         channelIds,
-        workspacePath: ws,
+        workspacePaths,
         maps,
         updatedAt: new Date().toISOString()
       };
       await saveState(state);
 
-      const out = { ok: true, project: name, categoryId: category.id, channelIds, workspacePath: ws };
+      const out = { ok: true, project: name, categoryId: category.id, channelIds, workspacePaths, templateActions };
       if (opts.json) return printJson(out);
       console.log(JSON.stringify(out, null, 2));
     });
@@ -130,7 +143,7 @@ export function registerProject(program: Command) {
       for (const cid of Object.values(p.channelIds)) plan.discord.delete.push(`channel:${cid}`);
       plan.discord.delete.push(`category:${p.categoryId}`);
       plan.openclaw.patch.push(`remove bindings for ${name}`);
-      plan.filesystem.delete.push(p.workspacePath);
+      for (const ws of Object.values(p.workspacePaths || {})) plan.filesystem.delete.push(ws);
 
       if (opts.plan || opts.dryRun) {
         if (opts.json) return printJson({ ok: true, plan });
@@ -165,7 +178,7 @@ export function registerProject(program: Command) {
         throw e;
       }
 
-      await deleteWorkspace(name);
+      for (const m of p.maps) await deleteWorkspace(name, m.channel);
       delete state.projects[name];
       await saveState(state);
 
@@ -180,10 +193,11 @@ export function registerProject(program: Command) {
       project: name,
       guildId: v.guildId,
       categoryId: v.categoryId,
-      workspacePath: v.workspacePath
+      channels: Object.keys(v.channelIds || {}),
+      workspacePaths: v.workspacePaths
     }));
     if (opts.json) return printJson(items);
-    for (const i of items) console.log(`${i.project} -> ${i.workspacePath} (${i.categoryId})`);
+    for (const i of items) console.log(`${i.project} -> ${Object.keys(i.workspacePaths || {}).length} workspaces (${i.categoryId})`);
   });
 
   project.command("show <name>").option("--json").action(async (name, opts) => {

@@ -1,8 +1,9 @@
 import path from "node:path";
 import os from "node:os";
-import { OPENCLAW_CONFIG } from "../core/paths.js";
+import { CLICKITYCLANK_TEMPLATES, OPENCLAW_CONFIG } from "../core/paths.js";
 import { ensureDir, fileExists, readJson, writeJsonAtomic } from "../core/io.js";
 import { printJson } from "../core/output.js";
+import { seedTemplates } from "../core/templates.js";
 
 export async function runInit(opts: { json?: boolean }) {
   const dir = path.resolve(".clickityclank");
@@ -14,9 +15,12 @@ export async function runInit(opts: { json?: boolean }) {
   const createdFiles: string[] = [];
   const warnings: string[] = [];
 
+  await seedTemplates();
+
   if (await fileExists(file)) {
     if (opts.json) return printJson({ ok: true, createdFiles, warnings: ["already initialized"] });
     console.log("already initialized");
+    console.log(`templates ready at ${CLICKITYCLANK_TEMPLATES}`);
     return;
   }
 
@@ -25,7 +29,9 @@ export async function runInit(opts: { json?: boolean }) {
   await writeJsonAtomic(file, {
     schemaVersion: 1,
     openclawConfigPath: OPENCLAW_CONFIG,
+    machineGlobalStatePath: path.join(os.homedir(), ".openclaw", "clickityclank", "state.json"),
     defaultWorkspaceRoot: path.join(os.homedir(), ".openclaw"),
+    templatesRoot: CLICKITYCLANK_TEMPLATES,
     discord: {
       guildId: "REQUIRED",
       profile: "explicit-mapping-only"
@@ -35,4 +41,5 @@ export async function runInit(opts: { json?: boolean }) {
 
   if (opts.json) return printJson({ ok: true, createdFiles, warnings });
   console.log(`initialized ${file}`);
+  console.log(`templates seeded at ${CLICKITYCLANK_TEMPLATES}`);
 }
