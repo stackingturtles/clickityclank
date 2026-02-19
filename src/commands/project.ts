@@ -171,7 +171,7 @@ export function registerProject(program: Command) {
       const cfg = await loadOpenClawConfig();
       const backup = await backupOpenClawConfig();
       try {
-        removeProjectBindings(cfg, name);
+        removeProjectBindings(cfg, name, p.guildId, p.channelIds);
         await saveOpenClawConfig(cfg);
       } catch (e) {
         await restoreOpenClawBackup(backup);

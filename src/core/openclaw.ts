@@ -59,6 +59,23 @@ export function ensureAgents(cfg: OpenClawConfig, maps: MapEntry[], project: str
   }
 }
 
+function shouldRemoveLegacyProjectBinding(binding: any, project: string) {
+  return binding?.match?.channel === "discord" && binding?.match?.projectTag === project;
+}
+
+function shouldRemoveProjectChannelBinding(binding: any, guildId: string, channelIdSet: Set<string>) {
+  if (binding?.match?.channel !== "discord") return false;
+  if (binding?.match?.guildId !== guildId) return false;
+
+  const legacyChannelId = binding?.match?.channelId;
+  if (legacyChannelId && channelIdSet.has(String(legacyChannelId))) return true;
+
+  const peer = binding?.match?.peer;
+  if (peer?.kind === "channel" && peer?.id && channelIdSet.has(String(peer.id))) return true;
+
+  return false;
+}
+
 export function upsertProjectBindings(
   cfg: OpenClawConfig,
   project: string,
@@ -68,28 +85,44 @@ export function upsertProjectBindings(
 ) {
   cfg.bindings = Array.isArray(cfg.bindings) ? cfg.bindings : [];
 
+  const channelIdSet = new Set(Object.values(channelIds).map(String));
+
   cfg.bindings = cfg.bindings.filter(
-    (b: any) => !(b?.match?.channel === "discord" && b?.match?.projectTag === project)
+    (b: any) =>
+      !shouldRemoveLegacyProjectBinding(b, project) && !shouldRemoveProjectChannelBinding(b, guildId, channelIdSet)
   );
 
   for (const m of maps) {
     const channelId = channelIds[m.channel];
+    if (!channelId) continue;
+
     cfg.bindings.push({
       agentId: m.agentId,
       match: {
         channel: "discord",
         guildId,
-        channelId,
-        projectTag: project
+        peer: {
+          kind: "channel",
+          id: String(channelId)
+        }
       }
     });
   }
 }
 
-export function removeProjectBindings(cfg: OpenClawConfig, project: string) {
-  cfg.bindings = (cfg.bindings || []).filter(
-    (b: any) => !(b?.match?.channel === "discord" && b?.match?.projectTag === project)
-  );
+export function removeProjectBindings(
+  cfg: OpenClawConfig,
+  project: string,
+  guildId?: string,
+  channelIds?: Record<string, string>
+) {
+  const channelIdSet = new Set(Object.values(channelIds || {}).map(String));
+
+  cfg.bindings = (cfg.bindings || []).filter((b: any) => {
+    if (shouldRemoveLegacyProjectBinding(b, project)) return false;
+    if (guildId && channelIdSet.size > 0 && shouldRemoveProjectChannelBinding(b, guildId, channelIdSet)) return false;
+    return true;
+  });
 }
 
 export async function saveOpenClawConfig(cfg: OpenClawConfig) {
