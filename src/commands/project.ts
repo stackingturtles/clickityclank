@@ -32,7 +32,7 @@ async function resolveMaps(opts: { map?: string[]; mapsFile?: string }) {
     const manifest = parseManifest(await readManifest(opts.mapsFile));
     return { projectFromFile: manifest.project, maps: validateMaps(manifest.maps) };
   }
-  const mapFlags = opts.map ?? [];
+  const mapFlags = Array.isArray(opts.map) ? opts.map : opts.map ? [opts.map] : [];
   if (!mapFlags.length) throw new Error("Explicit mappings are required. Use --map channel:agentId (repeatable) or --maps-file.");
   return { maps: parseMapFlags(mapFlags) };
 }
@@ -43,7 +43,15 @@ export function registerProject(program: Command) {
   project
     .command("create <name>")
     .requiredOption("--guild-id <id>")
-    .option("--map <channel:agent>", "Explicit channel/agent mapping", [])
+    .option(
+      "--map <channel:agent>",
+      "Explicit channel/agent mapping",
+      (value: string, previous: string[] = []) => {
+        previous.push(value);
+        return previous;
+      },
+      [] as string[]
+    )
     .option("--maps-file <path>")
     .option("--discord-token <token>")
     .option("--dry-run")

@@ -10,7 +10,8 @@
     "build": "tsup src/index.ts --format esm --dts --target node20 --out-dir dist --clean",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "watch": "tsup src/index.ts --format esm --dts --target node20 --out-dir dist --watch"
   },
   "engines": {
     "node": ">=20"
