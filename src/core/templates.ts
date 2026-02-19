@@ -11,7 +11,8 @@ const ROLE_MAP: Record<string, string> = {
   qa: "qa",
   handoff: "handoff",
   release: "release",
-  mobile: "mobile"
+  mobile: "mobile",
+  mobiledev: "mobiledev"
 };
 
 const DEFAULT_AGENT_TEMPLATE = `# {{project}} {{channel}} Agent\n\nYou are the {{channel}} specialist for {{project}}.\n\n## Focus\n- Deliver high-quality {{channel}} outcomes\n- Keep changes scoped and testable\n- Coordinate through handoff/release channels when needed\n`;
@@ -22,9 +23,9 @@ export function roleForChannel(channel: string) {
   return ROLE_MAP[channel] ?? channel;
 }
 
-export async function seedTemplates() {
-  const roles = ["frontend", "backend", "qa", "handoff", "release", "mobile"];
-  for (const role of roles) {
+export async function seedTemplates(roles: string[] = ["frontend", "backend", "qa", "handoff", "release", "mobile"]) {
+  const normalized = Array.from(new Set(roles.map((r) => r.trim().toLowerCase()).filter(Boolean)));
+  for (const role of normalized) {
     const dir = path.join(CLICKITYCLANK_TEMPLATES, role);
     await ensureDir(dir);
     const agents = path.join(dir, "AGENTS.md");

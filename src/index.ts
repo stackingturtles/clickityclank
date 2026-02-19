@@ -10,6 +10,7 @@ program.name("clickityclank").description("Discord/OpenClaw project routing CLI"
 program
   .command("init")
   .option("--json")
+  .option("--roles <csv>", "Role templates to seed, e.g. frontend,backend,qa,mobiledev")
   .action(async (opts) => {
     await runInit(opts);
   });

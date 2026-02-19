@@ -9,8 +9,8 @@ Provision Discord Project→Agent routing and OpenClaw project-role agent worksp
 - Creates machine-global state for repeatable operations
 - Supports safe planning with `--plan` and `--dry-run`
 
-> Current MVP does **not** yet scaffold role templates automatically. The target design is to use:
-> `~/.openclaw/clickityclank/templates/roles/<role>/{AGENTS.md,SOUL.md}`
+> `init` seeds role templates under:
+> `~/.clickityclank/templates/roles/<role>/{AGENTS.md,SOUL.md}`
 
 ---
 
@@ -67,7 +67,7 @@ Use that value as `--guild-id`.
 ### 1) Initialize local clickityclank config
 
 ```bash
-clickityclank init
+clickityclank init --roles frontend,backend,qa,mobiledev
 ```
 
 ### 2) Validate environment
@@ -105,7 +105,7 @@ clickityclank project create linearstories \
 
 ## Commands (MVP)
 
-- `clickityclank init [--json]`
+- `clickityclank init [--roles <csv>] [--json]`
 - `clickityclank doctor [--json] [--discord-token <token>]`
 - `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
@@ -162,7 +162,7 @@ clickityclank project create sneakerscan \
 - Machine-global state: `~/.openclaw/clickityclank/state.json`
 - OpenClaw config: `~/.openclaw/openclaw.json`
 - Workspace convention: `~/.openclaw/workspace-<project>-<channel>`
-- Template root: `~/.openclaw/clickityclank/templates/roles/`
+- Template root: `~/.clickityclank/templates/roles/`
 
 ---
 
