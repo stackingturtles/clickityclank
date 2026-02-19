@@ -34,9 +34,12 @@ clickityclank --help
 
 ## Required credentials
 
-clickityclank uses a **Discord control-plane bot token** for provisioning.
+clickityclank uses two Discord concepts:
 
-Set env var:
+1. **Control-plane provisioning token** (used by CLI to create categories/channels)
+2. **Runtime bot accounts** (used by OpenClaw to actually reply in channels)
+
+Set provisioning token env var:
 
 ```bash
 export CLICKITYCLANK_DISCORD_TOKEN='YOUR_DISCORD_BOT_TOKEN'
@@ -59,6 +62,45 @@ export CLICKITYCLANK_DISCORD_TOKEN='YOUR_DISCORD_BOT_TOKEN'
 3. Click **Copy Server ID**
 
 Use that value as `--guild-id`.
+
+---
+
+## Critical requirement: runtime bot accounts per role
+
+If you want `frontend` channel to reply as a dedicated frontend bot (not Hal/Infra/Omikuji), you must create and configure runtime bot accounts in OpenClaw.
+
+Minimum role bots for a standard project:
+- `frontend`
+- `backend`
+- `qa`
+
+### How to create each role bot in Discord Developer Portal
+
+1. Go to `https://discord.com/developers/applications`
+2. Click **New Application** (example name: `Frontend`)
+3. Open app → **Bot** → **Add Bot**
+4. Copy token
+5. OAuth2 → **URL Generator**
+   - Scopes: `bot`
+   - Permissions:
+     - View Channels
+     - Read Message History
+     - Send Messages
+     - Manage Channels (recommended for setup automation)
+6. Invite bot to your server
+
+Repeat for backend and qa bots.
+
+### OpenClaw account naming convention (important)
+
+For automatic role pinning, the Discord runtime `accountId` should match the agent id.
+
+Example:
+- accountId `frontend` ↔ agentId `frontend`
+- accountId `backend` ↔ agentId `backend`
+- accountId `qa` ↔ agentId `qa`
+
+When this naming matches, clickityclank will add `accountId` to channel bindings automatically and prevent cross-bot replies.
 
 ---
 

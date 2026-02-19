@@ -92,20 +92,28 @@ export function upsertProjectBindings(
       !shouldRemoveLegacyProjectBinding(b, project) && !shouldRemoveProjectChannelBinding(b, guildId, channelIdSet)
   );
 
+  const accountIds = new Set<string>(Object.keys(cfg?.channels?.discord?.accounts || {}));
+
   for (const m of maps) {
     const channelId = channelIds[m.channel];
     if (!channelId) continue;
 
+    const match: Record<string, unknown> = {
+      channel: "discord",
+      guildId,
+      peer: {
+        kind: "channel",
+        id: String(channelId)
+      }
+    };
+
+    if (accountIds.has(m.agentId)) {
+      match.accountId = m.agentId;
+    }
+
     cfg.bindings.push({
       agentId: m.agentId,
-      match: {
-        channel: "discord",
-        guildId,
-        peer: {
-          kind: "channel",
-          id: String(channelId)
-        }
-      }
+      match
     });
   }
 }
