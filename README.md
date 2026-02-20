@@ -2,6 +2,8 @@
 
 Provision Discord Project→Agent routing and OpenClaw project-role agent workspaces with explicit mappings.
 
+➡️ **Start here:** [GETTING-STARTED.md](./GETTING-STARTED.md)
+
 ## What it does (MVP)
 
 - Creates Discord categories/channels for a project
