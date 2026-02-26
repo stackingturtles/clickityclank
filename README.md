@@ -69,7 +69,7 @@ Use that value as `--guild-id`.
 
 ## Critical requirement: runtime bot accounts per role
 
-If you want `frontend` channel to reply as a dedicated frontend bot (not Hal/Infra/Omikuji), you must create and configure runtime bot accounts in OpenClaw.
+If you want each channel to reply as its dedicated role bot (not shared legacy identities), you must create and configure runtime bot accounts in OpenClaw.
 
 Minimum role bots for a standard project:
 - `frontend`
@@ -125,11 +125,11 @@ clickityclank doctor
 ```bash
 clickityclank project create linearstories \
   --guild-id 957153563694473286 \
-  --map fe:hal \
-  --map be:infra \
-  --map qa:omikujidev \
-  --map handoff:hal \
-  --map release:candle \
+  --map frontend:frontend \
+  --map backend:backend \
+  --map qa:qa \
+  --map mobiledev:mobiledev \
+  --map infra:infra \
   --plan --dry-run
 ```
 
@@ -138,11 +138,11 @@ clickityclank project create linearstories \
 ```bash
 clickityclank project create linearstories \
   --guild-id 957153563694473286 \
-  --map fe:hal \
-  --map be:infra \
-  --map qa:omikujidev \
-  --map handoff:hal \
-  --map release:candle
+  --map frontend:frontend \
+  --map backend:backend \
+  --map qa:qa \
+  --map mobiledev:mobiledev \
+  --map infra:infra
 ```
 
 ---
@@ -167,8 +167,9 @@ clickityclank project create linearstories \
 
 Example:
 
-- `--map fe:hal` → messages in `#fe` route to `hal`
-- `--map qa:omikujidev` → messages in `#qa` route to `omikujidev`
+- `--map frontend:frontend` → messages in `#frontend` route to `frontend`
+- `--map backend:backend` → messages in `#backend` route to `backend`
+- `--map qa:qa` → messages in `#qa` route to `qa`
 
 ---
 
@@ -177,18 +178,16 @@ Example:
 ```yaml
 project: sneakerscan
 maps:
-  - channel: fe
-    agentId: hal
-  - channel: be
-    agentId: infra
+  - channel: frontend
+    agentId: frontend
+  - channel: backend
+    agentId: backend
   - channel: qa
-    agentId: omikujidev
-  - channel: handoff
-    agentId: hal
-  - channel: release
-    agentId: candle
-  - channel: mobile
-    agentId: hal
+    agentId: qa
+  - channel: mobiledev
+    agentId: mobiledev
+  - channel: infra
+    agentId: infra
 ```
 
 Run:
