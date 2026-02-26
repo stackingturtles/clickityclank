@@ -157,7 +157,7 @@ clickityclank project create linearstories \
 - `clickityclank doctor [--json] [--discord-token <token>]`
 - `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--project-scoped-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
-- `clickityclank project sync <name> [--create-missing-agents] [--json]`
+- `clickityclank project sync <name> [--create-missing-agents] [--plan] [--dry-run] [--json]`
 - `clickityclank project list [--json]`
 - `clickityclank project show <name> [--json]`
 

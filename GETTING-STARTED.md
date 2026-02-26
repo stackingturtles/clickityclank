@@ -224,6 +224,7 @@ Then test in Discord:
 If channels/config drift over time (manual edits, deleted/recreated channels), run:
 
 ```bash
+clickityclank project sync linearstories --create-missing-agents --plan --dry-run
 clickityclank project sync linearstories --create-missing-agents
 clickityclank doctor --json
 ```

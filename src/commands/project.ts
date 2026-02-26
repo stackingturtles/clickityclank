@@ -203,6 +203,7 @@ export function registerProject(program: Command) {
     .command("sync <name>")
     .description("Reconcile local state with Discord and OpenClaw config")
     .option("--discord-token <token>")
+    .option("--create-missing-agents")
     .option("--dry-run")
     .option("--plan")
     .option("--json")
@@ -210,6 +211,9 @@ export function registerProject(program: Command) {
       const state = await loadState();
       const p = state.projects[name];
       if (!p) throw new Error(`Project not found in state: ${name}`);
+
+      const cfg = await loadOpenClawConfig();
+      ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
 
       const token = getToken(opts);
       if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
@@ -281,23 +285,26 @@ export function registerProject(program: Command) {
         return;
       }
 
-      if (channelsChanged) {
-        const cfg = await loadOpenClawConfig();
-        const backup = await backupOpenClawConfig();
-        try {
-          upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps);
-          await saveOpenClawConfig(cfg);
-        } catch (e) {
-          await restoreOpenClawBackup(backup);
-          throw e;
-        }
+      const backup = await backupOpenClawConfig();
+      try {
+        upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps);
+        await saveOpenClawConfig(cfg);
+      } catch (e) {
+        await restoreOpenClawBackup(backup);
+        throw e;
       }
 
       p.channelIds = updatedChannelIds;
       p.updatedAt = new Date().toISOString();
       await saveState(state);
 
-      const out = { ok: true, project: name, actions, channelIds: updatedChannelIds };
+      const out = {
+        ok: true,
+        project: name,
+        actions,
+        channelIds: updatedChannelIds,
+        syncedBindings: Object.keys(updatedChannelIds || {}).length
+      };
       if (opts.json) return printJson(out);
       if (actions.length === 0) {
         console.log(`${name}: in sync`);
@@ -305,36 +312,6 @@ export function registerProject(program: Command) {
         console.log(`${name}: synced (${actions.length} action(s))`);
         for (const a of actions) console.log(`  - ${a}`);
       }
-    });
-
-  project
-    .command("sync <name>")
-    .option("--create-missing-agents")
-    .option("--json")
-    .action(async (name, opts) => {
-      const state = await loadState();
-      const p = state.projects[name];
-      if (!p) throw new Error(`Project not found in state: ${name}`);
-
-      const cfg = await loadOpenClawConfig();
-      ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
-
-      const backup = await backupOpenClawConfig();
-      try {
-        upsertProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps);
-        await saveOpenClawConfig(cfg);
-      } catch (e) {
-        await restoreOpenClawBackup(backup);
-        throw e;
-      }
-
-      const out = {
-        ok: true,
-        project: name,
-        syncedBindings: Object.keys(p.channelIds || {}).length
-      };
-      if (opts.json) return printJson(out);
-      console.log(JSON.stringify(out, null, 2));
     });
 
   project.command("list").option("--json").action(async (opts) => {
