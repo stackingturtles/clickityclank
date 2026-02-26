@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>clickityclank — Project Spaces for OpenClaw Agents</title>
+  <meta name="description" content="Provision Discord-based project spaces for collections of OpenClaw agents. One command to deploy, scope, and wire your entire agent team.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Motion library -->
+  <script src="https://cdn.jsdelivr.net/npm/motion@11.18.0/dist/motion.js" defer></script>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="clickityclank — Project Spaces for OpenClaw Agents">
+  <meta property="og:description" content="One command to deploy project-scoped agent teams on Discord + OpenClaw.">
+  <meta property="og:type" content="website">
+
+  <style>
+    /* =========================================================
+       DESIGN TOKENS (from styleguide)
+       ========================================================= */
+    :root {
+      --silver-50:  #fafafa;
+      --silver-100: #f4f4f5;
+      --silver-200: #e4e4e7;
+      --silver-300: #d4d4d8;
+      --silver-400: #a1a1aa;
+      --silver-500: #c0c0c0;
+      --silver-600: #71717a;
+      --silver-700: #52525b;
+      --silver-800: #3f3f46;
+      --silver-900: #27272a;
+
+      --primary:        var(--silver-500);
+      --primary-light:  var(--silver-300);
+      --primary-dark:   var(--silver-600);
+
+      --teal-400: #2dd4bf;
+      --teal-500: #14b8a6;
+      --teal-600: #0d9488;
+      --teal-700: #0f766e;
+      --teal-800: #115e59;
+      --accent-teal:    var(--teal-400);
+      --accent-teal-bg: #042f2e;
+
+      --amber-400: #fbbf24;
+      --amber-500: #f59e0b;
+      --amber-700: #b45309;
+      --amber-800: #92400e;
+      --accent-amber:    var(--amber-400);
+      --accent-amber-bg: #2d2005;
+
+      --slate-blue-400: #748ffc;
+      --slate-blue-700: #4263eb;
+      --slate-blue-800: #3b5bdb;
+      --accent-blue:    var(--slate-blue-400);
+      --accent-blue-bg: #0f1a3d;
+
+      --bg-root:     #0a0e17;
+      --bg-surface:  #0f1520;
+      --bg-elevated: #151c28;
+      --bg-overlay:  #1a2233;
+      --bg-inset:    #080c14;
+
+      --text-primary:   #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-tertiary:  #71717a;
+      --text-inverse:   #0a0e17;
+
+      --border-default: #1e2736;
+      --border-subtle:  #151d2a;
+      --border-strong:  #2a3547;
+
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-body:    'IBM Plex Sans', sans-serif;
+      --font-mono:    'IBM Plex Mono', monospace;
+
+      --text-xs:   0.75rem;
+      --text-sm:   0.875rem;
+      --text-base: 1rem;
+      --text-lg:   1.125rem;
+      --text-xl:   1.25rem;
+      --text-2xl:  1.5rem;
+      --text-3xl:  1.875rem;
+      --text-4xl:  2.25rem;
+      --text-5xl:  3rem;
+      --text-6xl:  3.75rem;
+      --text-7xl:  4.5rem;
+
+      --leading-tight:  1.15;
+      --leading-snug:   1.3;
+      --leading-normal: 1.6;
+      --leading-relaxed:1.75;
+
+      --weight-regular:  400;
+      --weight-medium:   500;
+      --weight-semibold: 600;
+      --weight-bold:     700;
+      --weight-extrabold:800;
+
+      --space-1:  0.25rem;
+      --space-2:  0.5rem;
+      --space-3:  0.75rem;
+      --space-4:  1rem;
+      --space-5:  1.25rem;
+      --space-6:  1.5rem;
+      --space-8:  2rem;
+      --space-10: 2.5rem;
+      --space-12: 3rem;
+      --space-16: 4rem;
+      --space-20: 5rem;
+      --space-24: 6rem;
+      --space-32: 8rem;
+
+      --radius-sm:   4px;
+      --radius-md:   8px;
+      --radius-lg:   12px;
+      --radius-xl:   16px;
+      --radius-2xl:  24px;
+      --radius-full: 9999px;
+
+      --shadow-sm:  0 1px 2px rgba(0,0,0,0.4);
+      --shadow-md:  0 4px 12px rgba(0,0,0,0.5);
+      --shadow-lg:  0 8px 24px rgba(0,0,0,0.6);
+      --shadow-xl:  0 16px 48px rgba(0,0,0,0.7);
+      --shadow-glow-teal:  0 0 30px rgba(45,212,191,0.1);
+      --shadow-glow-amber: 0 0 30px rgba(251,191,36,0.1);
+      --shadow-glow-blue:  0 0 30px rgba(116,143,252,0.1);
+
+      --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --duration-fast:   120ms;
+      --duration-normal: 200ms;
+      --duration-slow:   400ms;
+    }
+
+    /* =========================================================
+       RESET & BASE
+       ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: var(--weight-regular);
+      line-height: var(--leading-normal);
+      color: var(--text-primary);
+      background: var(--bg-root);
+      overflow-x: hidden;
+    }
+
+    ::selection {
+      background: rgba(45,212,191,0.2);
+      color: var(--text-primary);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--teal-400);
+      outline-offset: 2px;
+    }
+
+    a { color: var(--primary-light); text-decoration: none; transition: color var(--duration-fast) var(--ease-out); }
+    a:hover { color: var(--silver-100); }
+    img { max-width: 100%; display: block; }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 128px 128px;
+    }
+
+    /* =========================================================
+       PARTICLE CANVAS
+       ========================================================= */
+    #particle-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* =========================================================
+       LAYOUT
+       ========================================================= */
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      margin-inline: auto;
+      padding-inline: var(--space-6);
+    }
+
+    .container-wide {
+      max-width: 1200px;
+    }
+
+    .section {
+      position: relative;
+      z-index: 1;
+      padding-block: var(--space-24);
+    }
+
+    /* =========================================================
+       NAV
+       ========================================================= */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,14,23,0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-block: var(--space-4);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-8);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .nav-brand-icon {
+      width: 28px; height: 28px;
+      background: var(--teal-400);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-brand-icon svg { width: 16px; height: 16px; color: var(--bg-root); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      list-style: none;
+    }
+
+    .nav-links a {
+      display: block;
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
+      color: var(--text-secondary);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    .nav-links a:hover {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+
+    .nav-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+    /* =========================================================
+       BUTTONS
+       ========================================================= */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      line-height: 1;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-5);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--silver-300);
+      color: var(--text-inverse);
+      border-color: var(--silver-300);
+    }
+    .btn-primary:hover {
+      background: var(--silver-100);
+      border-color: var(--silver-100);
+      color: var(--text-inverse);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-default);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-overlay);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: transparent;
+    }
+    .btn-ghost:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .btn-sm { font-size: var(--text-xs); padding: var(--space-2) var(--space-4); }
+    .btn-lg { font-size: var(--text-base); padding: var(--space-4) var(--space-8); border-radius: var(--radius-lg); }
+
+    /* =========================================================
+       SECTION LABELS & HEADINGS
+       ========================================================= */
+    .section-label {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-medium);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--teal-400);
+      background: var(--accent-teal-bg);
+      border: 1px solid var(--teal-800);
+      border-radius: var(--radius-full);
+      padding: var(--space-1) var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .section-label-amber {
+      color: var(--amber-400);
+      background: var(--accent-amber-bg);
+      border-color: var(--amber-800);
+    }
+
+    .section-label-blue {
+      color: var(--slate-blue-400);
+      background: var(--accent-blue-bg);
+      border-color: var(--slate-blue-800);
+    }
+
+    .section-heading {
+      font-family: var(--font-display);
+      font-size: clamp(var(--text-3xl), 4vw, var(--text-4xl));
+      font-weight: var(--weight-bold);
+      line-height: var(--leading-tight);
+      color: var(--text-primary);
+      margin-bottom: var(--space-4);
+    }
+
+    .section-sub {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      max-width: 52ch;
+      line-height: var(--leading-normal);
+    }
+
+    .section-header {
+      margin-bottom: var(--space-12);
+    }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+    .hero {
+      position: relative;
+      z-index: 1;
+      padding-top: var(--space-24);
+      padding-bottom: var(--space-16);
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(45,212,191,0.03) 0%, rgba(116,143,252,0.02) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
+      color: var(--teal-400);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-6);
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(var(--text-4xl), 7vw, var(--text-7xl));
+      font-weight: var(--weight-extrabold);
+      line-height: 1.05;
+      color: var(--text-primary);
+      margin-bottom: var(--space-6);
+      max-width: 16ch;
+      margin-inline: auto;
+    }
+
+    .hero-title .accent { color: var(--teal-400); }
+
+    .hero-sub {
+      font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
+      color: var(--text-secondary);
+      max-width: 48ch;
+      margin-inline: auto;
+      line-height: var(--leading-normal);
+      margin-bottom: var(--space-10);
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-8);
+    }
+
+    .hero-install {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-3) var(--space-5);
+      margin-inline: auto;
+      width: fit-content;
+      cursor: pointer;
+      transition: border-color var(--duration-fast) var(--ease-out);
+    }
+    .hero-install:hover { border-color: var(--border-strong); }
+    .hero-install code { color: var(--text-secondary); }
+    .hero-install .copy-icon { width: 14px; height: 14px; opacity: 0.5; }
+
+    .hero-diagram-wrap {
+      margin-top: var(--space-16);
+      position: relative;
+    }
+
+    .hero-diagram {
+      width: 100%;
+      max-width: 900px;
+      margin-inline: auto;
+      display: block;
+    }
+
+    /* =========================================================
+       PROBLEM SECTION
+       ========================================================= */
+    .problem {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-16);
+      align-items: start;
+    }
+
+    .problem-narrative {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+
+    .problem-narrative p {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    .problem-narrative p strong {
+      color: var(--text-primary);
+      font-weight: var(--weight-semibold);
+    }
+
+    .problem-cards {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
+    }
+
+    .pain-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5) var(--space-6);
+      display: flex;
+      gap: var(--space-4);
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .pain-card:hover {
+      border-color: var(--border-strong);
+      transform: translateX(4px);
+    }
+
+    .pain-card-num {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      font-weight: var(--weight-extrabold);
+      color: var(--silver-800);
+      line-height: 1;
+      flex-shrink: 0;
+      width: 36px;
+    }
+
+    .pain-card-content h4 {
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      font-weight: var(--weight-semibold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .pain-card-content p {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--leading-normal);
+    }
+
+    /* Accent borders per card */
+    .pain-card:nth-child(1) { border-left: 2px solid var(--teal-700); }
+    .pain-card:nth-child(2) { border-left: 2px solid var(--amber-700); }
+    .pain-card:nth-child(3) { border-left: 2px solid var(--slate-blue-700); }
+    .pain-card:nth-child(4) { border-left: 2px solid var(--silver-700); }
+
+    /* =========================================================
+       SOLUTION SECTION
+       ========================================================= */
+    .solution {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .solution-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-16);
+      align-items: center;
+    }
+
+    .solution-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
+    }
+
+    .solution-content p {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    .solution-content p strong {
+      color: var(--text-primary);
+      font-weight: var(--weight-semibold);
+    }
+
+    .solution-visual {
+      position: relative;
+    }
+
+    /* Discord-like project tree mockup */
+    .discord-tree {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+    }
+
+    .discord-tree-header {
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: var(--space-4);
+      padding-bottom: var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .discord-category {
+      margin-bottom: var(--space-4);
+    }
+
+    .discord-category-name {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-weight: var(--weight-semibold);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-tertiary);
+      margin-bottom: var(--space-2);
+    }
+
+    .discord-category-name .arrow {
+      font-size: 8px;
+      color: var(--text-tertiary);
+    }
+
+    .discord-channel {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-3) var(--space-1) var(--space-6);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      border-radius: var(--radius-sm);
+      margin-bottom: 1px;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .discord-channel:hover {
+      background: var(--bg-overlay);
+      color: var(--text-primary);
+    }
+
+    .discord-channel .hash {
+      color: var(--text-tertiary);
+      font-weight: var(--weight-medium);
+    }
+
+    .discord-channel .agent-badge {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      font-weight: var(--weight-medium);
+    }
+
+    .badge-teal { background: var(--accent-teal-bg); color: var(--teal-400); border: 1px solid var(--teal-800); }
+    .badge-amber { background: var(--accent-amber-bg); color: var(--amber-400); border: 1px solid var(--amber-800); }
+    .badge-blue { background: var(--accent-blue-bg); color: var(--slate-blue-400); border: 1px solid var(--slate-blue-800); }
+
+    /* =========================================================
+       HOW IT WORKS
+       ========================================================= */
+    .how-it-works {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-8);
+      position: relative;
+    }
+
+    /* Connecting line */
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      left: calc(16.67% + 24px);
+      right: calc(16.67% + 24px);
+      height: 1px;
+      background: var(--border-default);
+    }
+
+    .step {
+      text-align: center;
+      position: relative;
+    }
+
+    .step-num {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-inline: auto;
+      margin-bottom: var(--space-5);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      position: relative;
+      z-index: 2;
+    }
+
+    .step:nth-child(1) .step-num {
+      background: var(--accent-teal-bg);
+      color: var(--teal-400);
+      border: 1px solid var(--teal-800);
+    }
+    .step:nth-child(2) .step-num {
+      background: var(--accent-amber-bg);
+      color: var(--amber-400);
+      border: 1px solid var(--amber-800);
+    }
+    .step:nth-child(3) .step-num {
+      background: var(--accent-blue-bg);
+      color: var(--slate-blue-400);
+      border: 1px solid var(--slate-blue-800);
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: var(--weight-semibold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .step-desc {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--leading-normal);
+      max-width: 28ch;
+      margin-inline: auto;
+    }
+
+    /* =========================================================
+       FEATURES
+       ========================================================= */
+    .features {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: var(--space-6);
+    }
+
+    .feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      position: relative;
+      overflow: hidden;
+      transition: all var(--duration-slow) var(--ease-out);
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      opacity: 0;
+      transition: opacity var(--duration-slow) var(--ease-out);
+    }
+
+    .feature-card:nth-child(1)::before,
+    .feature-card:nth-child(4)::before { background: rgba(45,212,191,0.3); }
+    .feature-card:nth-child(2)::before,
+    .feature-card:nth-child(5)::before { background: rgba(251,191,36,0.3); }
+    .feature-card:nth-child(3)::before,
+    .feature-card:nth-child(6)::before { background: rgba(116,143,252,0.3); }
+
+    .feature-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-4px);
+    }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-card:nth-child(1):hover,
+    .feature-card:nth-child(4):hover { box-shadow: 0 12px 40px rgba(0,0,0,0.4), var(--shadow-glow-teal); }
+    .feature-card:nth-child(2):hover,
+    .feature-card:nth-child(5):hover { box-shadow: 0 12px 40px rgba(0,0,0,0.4), var(--shadow-glow-amber); }
+    .feature-card:nth-child(3):hover,
+    .feature-card:nth-child(6):hover { box-shadow: 0 12px 40px rgba(0,0,0,0.4), var(--shadow-glow-blue); }
+
+    .feature-icon {
+      width: 44px; height: 44px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-5);
+      border: 1px solid;
+    }
+
+    .feature-icon svg { width: 20px; height: 20px; }
+
+    .fi-teal  { background: var(--accent-teal-bg);  border-color: var(--teal-800);  color: var(--teal-400); }
+    .fi-amber { background: var(--accent-amber-bg); border-color: var(--amber-800); color: var(--amber-400); }
+    .fi-blue  { background: var(--accent-blue-bg);  border-color: var(--slate-blue-800); color: var(--slate-blue-400); }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-3);
+    }
+
+    .feature-desc {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    /* =========================================================
+       QUICK START
+       ========================================================= */
+    .quickstart {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .qs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-12);
+      align-items: start;
+    }
+
+    .qs-steps {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+
+    .qs-step {
+      display: flex;
+      gap: var(--space-4);
+    }
+
+    .qs-step-num {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-full);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .qs-step-content h4 {
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      font-weight: var(--weight-semibold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .qs-step-content p {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--leading-normal);
+    }
+
+    /* Terminal code block */
+    .code-block {
+      background: var(--bg-inset);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .code-block-dots { display: flex; gap: 6px; }
+    .code-block-dots span { width: 10px; height: 10px; border-radius: var(--radius-full); }
+    .code-block-dots span:nth-child(1) { background: #f87171; }
+    .code-block-dots span:nth-child(2) { background: #fbbf24; }
+    .code-block-dots span:nth-child(3) { background: #34d399; }
+
+    .code-block-title {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+    }
+
+    .code-block-body {
+      padding: var(--space-5);
+      overflow-x: auto;
+    }
+
+    .code-block-body code {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      line-height: var(--leading-relaxed);
+      color: var(--text-secondary);
+      white-space: pre;
+    }
+
+    .t-cmd { color: var(--teal-400); }
+    .t-flag { color: var(--slate-blue-400); }
+    .t-val { color: var(--amber-400); }
+    .t-cmt { color: var(--text-tertiary); }
+    .t-ok { color: #34d399; }
+
+    code.inline {
+      font-family: var(--font-mono);
+      font-size: 0.875em;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1px 6px;
+      color: var(--teal-400);
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+    .footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border-default);
+      padding-block: var(--space-12);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-6);
+    }
+
+    .footer-brand-name {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+    }
+
+    .footer-brand-tagline {
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      margin-top: var(--space-1);
+    }
+
+    .footer-links { display: flex; align-items: center; gap: var(--space-6); }
+
+    .footer-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      transition: color var(--duration-fast) var(--ease-out);
+    }
+    .footer-link:hover { color: var(--text-primary); }
+    .footer-link svg { width: 18px; height: 18px; }
+
+    .footer-copy {
+      width: 100%;
+      text-align: center;
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+      margin-top: var(--space-8);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* =========================================================
+       SCROLL REVEAL
+       ========================================================= */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+
+    .reveal.visible {
+      animation: reveal-up 0.65s var(--ease-out) forwards;
+    }
+
+    @keyframes reveal-up {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Stagger children */
+    .reveal.visible .reveal-child:nth-child(1) { animation-delay: 0ms; }
+    .reveal.visible .reveal-child:nth-child(2) { animation-delay: 80ms; }
+    .reveal.visible .reveal-child:nth-child(3) { animation-delay: 160ms; }
+    .reveal.visible .reveal-child:nth-child(4) { animation-delay: 240ms; }
+    .reveal.visible .reveal-child:nth-child(5) { animation-delay: 320ms; }
+    .reveal.visible .reveal-child:nth-child(6) { animation-delay: 400ms; }
+
+    .reveal-child {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .reveal.visible .reveal-child {
+      animation: reveal-up 0.55s var(--ease-out) forwards;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+    @media (max-width: 900px) {
+      .problem-grid,
+      .solution-grid,
+      .qs-grid { grid-template-columns: 1fr; gap: var(--space-10); }
+      .steps { grid-template-columns: 1fr; gap: var(--space-6); }
+      .steps::before { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero { padding-top: var(--space-16); }
+      .feature-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- ==================== NAV ==================== -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-brand">
+        <span class="nav-brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </span>
+        clickityclank
+      </a>
+      <ul class="nav-links">
+        <li><a href="#problem">Problem</a></li>
+        <li><a href="#solution">Solution</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#quickstart">Quick Start</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="https://github.com/stackingturtles/clickityclank" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.237 1.838 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.42-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.694.825.576C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <a href="#quickstart" class="btn btn-primary btn-sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== HERO ==================== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-eyebrow" data-hero="fade" data-delay="0">Project Spaces for OpenClaw</div>
+      <h1 class="hero-title" data-hero="fade" data-delay="100">
+        Your Agents.<br>Your Projects.<br>One Command.
+      </h1>
+      <p class="hero-sub" data-hero="fade" data-delay="200">
+        Stop wrestling with OpenClaw configuration. Provision project-scoped agent teams on Discord with a single CLI command.
+      </p>
+      <div class="hero-actions" data-hero="fade" data-delay="300">
+        <a href="#quickstart" class="btn btn-primary btn-lg">Get Started</a>
+        <a href="https://github.com/stackingturtles/clickityclank" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.237 1.838 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.42-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.694.825.576C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="hero-install" data-hero="fade" data-delay="420">
+        <code>npm install -g clickityclank</code>
+        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      </div>
+
+      <div class="hero-diagram-wrap" data-hero="fade" data-delay="550">
+        <img src="diagram.png" alt="clickityclank project spaces — multiple projects with orbital agent teams" class="hero-diagram">
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== PROBLEM ==================== -->
+  <section class="section problem" id="problem">
+    <div class="container">
+      <div class="problem-grid">
+        <div class="reveal">
+          <div class="section-header">
+            <span class="section-label section-label-amber">The Problem</span>
+            <h2 class="section-heading">The Single Agent Ceiling</h2>
+          </div>
+          <div class="problem-narrative">
+            <p>Your OpenClaw journey starts the same way everyone's does. <strong>One general-purpose agent.</strong> You build some skills, set up a daily briefing, maybe automate your email triage. It works. You're productive.</p>
+            <p>Then you want to build something real. A project with a frontend, a backend, infrastructure concerns. <strong>Suddenly, one agent trying to context-switch across everything becomes the bottleneck.</strong></p>
+            <p>What you actually want is a <strong>team of specialists</strong> you can talk to throughout the day &mdash; and the sleepless night &mdash; that know your project, remember its history weeks and months back, and don't need retraining when you pick things back up.</p>
+            <p>And if you're running multiple projects? Each advancing at different speeds, each needing its own skilled agents? <strong>The config file gymnastics to set that up in OpenClaw is enough to make you give up before you start.</strong></p>
+          </div>
+        </div>
+
+        <div class="problem-cards reveal">
+          <div class="pain-card reveal-child">
+            <span class="pain-card-num">1</span>
+            <div class="pain-card-content">
+              <h4>Context Collapse</h4>
+              <p>A single agent juggling frontend, backend, QA, and infra loses track of what matters. Project context leaks across concerns.</p>
+            </div>
+          </div>
+          <div class="pain-card reveal-child">
+            <span class="pain-card-num">2</span>
+            <div class="pain-card-content">
+              <h4>No Project Memory</h4>
+              <p>Start a conversation today, lose the thread tomorrow. Agents without dedicated sessions can't maintain long-running project awareness.</p>
+            </div>
+          </div>
+          <div class="pain-card reveal-child">
+            <span class="pain-card-num">3</span>
+            <div class="pain-card-content">
+              <h4>Multi-Project Chaos</h4>
+              <p>Different projects at different stages, each needing different agent configurations. Scaling means multiplying complexity.</p>
+            </div>
+          </div>
+          <div class="pain-card reveal-child">
+            <span class="pain-card-num">4</span>
+            <div class="pain-card-content">
+              <h4>Config File Hell</h4>
+              <p>Manually editing openclaw.json, wiring bindings, managing scopes, creating workspaces. Hours of plumbing before you write a line of code.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SOLUTION ==================== -->
+  <section class="section solution" id="solution">
+    <div class="container">
+      <div class="solution-grid">
+        <div class="reveal">
+          <div class="section-header">
+            <span class="section-label">The Solution</span>
+            <h2 class="section-heading">Project Spaces on Discord</h2>
+          </div>
+          <div class="solution-content">
+            <p>clickityclank creates <strong>project spaces</strong> &mdash; a collection of OpenClaw agents scoped to a project, each living in their own Discord channel with their own memory and session.</p>
+            <p>We use Discord because it has the perfect hierarchy built in: <strong>categories become projects, channels become agents.</strong> You talk to your frontend dev in <code class="inline">#frontend</code>, your QA engineer in <code class="inline">#qa</code>, your backend dev in <code class="inline">#backend</code>. Each one isolated, persistent, and purpose-built.</p>
+            <p>Set up your Discord bots <strong>once</strong> and reuse them across every project. clickityclank wires the bindings, configures the <code class="inline">AGENTS.md</code> and <code class="inline">SOUL.md</code> from your templates, and gives each agent their own workspace. Spinning up a new project takes seconds. Tearing one down is just as clean.</p>
+          </div>
+        </div>
+
+        <div class="solution-visual reveal">
+          <div class="discord-tree">
+            <div class="discord-tree-header">Discord Server</div>
+
+            <div class="discord-category">
+              <div class="discord-category-name"><span class="arrow">&#9660;</span> LINEARSTORIES</div>
+              <div class="discord-channel"><span class="hash">#</span> frontend <span class="agent-badge badge-teal">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-teal">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-teal">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> infra <span class="agent-badge badge-teal">agent</span></div>
+            </div>
+
+            <div class="discord-category">
+              <div class="discord-category-name"><span class="arrow">&#9660;</span> SNEAKERSCAN</div>
+              <div class="discord-channel"><span class="hash">#</span> frontend <span class="agent-badge badge-amber">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-amber">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-amber">agent</span></div>
+            </div>
+
+            <div class="discord-category">
+              <div class="discord-category-name"><span class="arrow">&#9660;</span> OMIKUJI</div>
+              <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-blue">agent</span></div>
+              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-blue">agent</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== HOW IT WORKS ==================== -->
+  <section class="section how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header reveal" style="text-align:center">
+        <span class="section-label section-label-blue">How It Works</span>
+        <h2 class="section-heading" style="margin-inline:auto">Three Steps. That's It.</h2>
+        <p class="section-sub" style="margin-inline:auto">Set up bots once, define your mappings, deploy.</p>
+      </div>
+
+      <div class="steps reveal">
+        <div class="step reveal-child">
+          <div class="step-num">1</div>
+          <h3 class="step-title">Create Discord Bots</h3>
+          <p class="step-desc">One bot per role: frontend, backend, QA. Create them once in the Discord Developer Portal and invite to your server.</p>
+        </div>
+        <div class="step reveal-child">
+          <div class="step-num">2</div>
+          <h3 class="step-title">Define Your Map</h3>
+          <p class="step-desc">Tell clickityclank which channels map to which agents. Inline flags or a YAML manifest &mdash; your choice.</p>
+        </div>
+        <div class="step reveal-child">
+          <div class="step-num">3</div>
+          <h3 class="step-title">Deploy</h3>
+          <p class="step-desc">One command creates the Discord category, channels, OpenClaw bindings, scopes, and agent workspaces. Done.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FEATURES ==================== -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="section-header reveal" style="text-align:center">
+        <span class="section-label">Capabilities</span>
+        <h2 class="section-heading" style="margin-inline:auto">Built for Real Agent Workflows</h2>
+        <p class="section-sub" style="margin-inline:auto">Everything you need to manage project-scoped agent teams at scale.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-teal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <h3 class="feature-title">Single Command Deploy</h3>
+          <p class="feature-desc">Create Discord categories, text channels, and OpenClaw agent bindings in one atomic operation. No manual config editing.</p>
+        </div>
+
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.93l4.24-4.24m4.24-4.24l4.24-4.24M1 12h6m6 0h6m-3.93 7.07l-4.24-4.24m-4.24-4.24L4.93 4.93"/></svg>
+          </div>
+          <h3 class="feature-title">Project-Scoped Agents</h3>
+          <p class="feature-desc">Each agent gets a project-prefixed ID while sharing the underlying bot account. Clean isolation across multiple projects.</p>
+        </div>
+
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3 class="feature-title">Plan Before You Act</h3>
+          <p class="feature-desc">Preview every mutation with --plan and --dry-run. See exactly which channels, bindings, and workspaces will be created or destroyed.</p>
+        </div>
+
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-teal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          </div>
+          <h3 class="feature-title">Drift Detection &amp; Sync</h3>
+          <p class="feature-desc">Detect when your running config diverges from declared state. Reconcile with a single sync command &mdash; idempotently.</p>
+        </div>
+
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="feature-title">Isolated Sessions</h3>
+          <p class="feature-desc">Every agent gets its own workspace, AGENTS.md, and SOUL.md. No context bleed between channels, projects, or agents.</p>
+        </div>
+
+        <div class="feature-card reveal" data-animate="feature">
+          <div class="feature-icon fi-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+          </div>
+          <h3 class="feature-title">YAML Manifests</h3>
+          <p class="feature-desc">Define channel-to-agent mappings in version-controlled YAML files. Share configurations across teams and environments.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== QUICK START ==================== -->
+  <section class="section quickstart" id="quickstart">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Get Started</span>
+        <h2 class="section-heading">Up and Running in Minutes</h2>
+        <p class="section-sub">Four commands from zero to a fully-wired project. See the full <a href="https://github.com/stackingturtles/clickityclank/blob/main/GETTING-STARTED.md" target="_blank" rel="noopener" style="color:var(--teal-400)">Getting Started guide</a> for detailed setup instructions.</p>
+      </div>
+
+      <div class="qs-grid">
+        <div class="qs-steps reveal">
+          <div class="qs-step reveal-child">
+            <span class="qs-step-num">1</span>
+            <div class="qs-step-content">
+              <h4>Install &amp; initialize</h4>
+              <p>Install clickityclank globally and seed your role templates. This creates the template directory with starter AGENTS.md and SOUL.md files for each role.</p>
+            </div>
+          </div>
+          <div class="qs-step reveal-child">
+            <span class="qs-step-num">2</span>
+            <div class="qs-step-content">
+              <h4>Validate your environment</h4>
+              <p>Run doctor to check your Discord token, OpenClaw config, and runtime bot accounts are all wired correctly before creating anything.</p>
+            </div>
+          </div>
+          <div class="qs-step reveal-child">
+            <span class="qs-step-num">3</span>
+            <div class="qs-step-content">
+              <h4>Plan your project</h4>
+              <p>Preview the full execution plan with --plan --dry-run. See every Discord channel, OpenClaw binding, and workspace that will be created.</p>
+            </div>
+          </div>
+          <div class="qs-step reveal-child">
+            <span class="qs-step-num">4</span>
+            <div class="qs-step-content">
+              <h4>Deploy for real</h4>
+              <p>Drop the --dry-run flag and your project space is live. Discord channels created, agents wired, workspaces provisioned. Start talking to your team.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal">
+          <div class="code-block" style="position:sticky;top:100px">
+            <div class="code-block-header">
+              <div class="code-block-dots"><span></span><span></span><span></span></div>
+              <span class="code-block-title">terminal</span>
+            </div>
+            <div class="code-block-body">
+<code><span class="t-cmt"># 1. Install and initialize templates</span>
+<span class="t-cmd">npm</span> install -g clickityclank
+<span class="t-cmd">clickityclank</span> init <span class="t-flag">--roles</span> <span class="t-val">frontend,backend,qa</span>
+
+<span class="t-cmt"># 2. Validate environment</span>
+<span class="t-cmd">clickityclank</span> doctor
+<span class="t-ok">  discord-auth    pass</span>
+<span class="t-ok">  openclaw-config pass</span>
+<span class="t-ok">  runtime-bots    pass</span>
+
+<span class="t-cmt"># 3. Plan (no mutations)</span>
+<span class="t-cmd">clickityclank</span> project create myapp \
+  <span class="t-flag">--guild-id</span> <span class="t-val">$DISCORD_GUILD_ID</span> \
+  <span class="t-flag">--map</span> <span class="t-val">frontend:frontend</span> \
+  <span class="t-flag">--map</span> <span class="t-val">backend:backend</span> \
+  <span class="t-flag">--map</span> <span class="t-val">qa:qa</span> \
+  <span class="t-flag">--project-scoped-agents</span> \
+  <span class="t-flag">--plan</span> <span class="t-flag">--dry-run</span>
+
+<span class="t-cmt"># 4. Deploy for real</span>
+<span class="t-cmd">clickityclank</span> project create myapp \
+  <span class="t-flag">--guild-id</span> <span class="t-val">$DISCORD_GUILD_ID</span> \
+  <span class="t-flag">--map</span> <span class="t-val">frontend:frontend</span> \
+  <span class="t-flag">--map</span> <span class="t-val">backend:backend</span> \
+  <span class="t-flag">--map</span> <span class="t-val">qa:qa</span> \
+  <span class="t-flag">--project-scoped-agents</span>
+<span class="t-ok">  Category created: MYAPP</span>
+<span class="t-ok">  Channel #frontend bound to myapp-frontend</span>
+<span class="t-ok">  Channel #backend  bound to myapp-backend</span>
+<span class="t-ok">  Channel #qa       bound to myapp-qa</span></code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div>
+          <div class="footer-brand-name">clickityclank</div>
+          <div class="footer-brand-tagline">Project spaces for OpenClaw agents</div>
+        </div>
+        <div class="footer-links">
+          <a href="https://x.com" class="footer-link" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            X / Twitter
+          </a>
+          <a href="https://instagram.com" class="footer-link" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            Instagram
+          </a>
+          <a href="mailto:hello@clickityclank.dev" class="footer-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+            Email
+          </a>
+        </div>
+      </div>
+      <div class="footer-copy">
+        2026 clickityclank. Built for agentic developers on OpenClaw.
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script>
+    // ---- Particle System ----
+    (function() {
+      var canvas = document.getElementById('particle-canvas');
+      var ctx = canvas.getContext('2d');
+      var particles = [];
+      var w, h;
+      var COUNT = 50;
+      var SPEED = 0.25;
+      var DIST = 130;
+      var PALETTE = [
+        [192, 192, 192],
+        [45, 212, 191],
+        [251, 191, 36],
+        [116, 143, 252]
+      ];
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+
+      function create() {
+        var c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * SPEED,
+          vy: (Math.random() - 0.5) * SPEED,
+          r: Math.random() * 1.4 + 0.5,
+          a: Math.random() * 0.25 + 0.08,
+          c: c
+        };
+      }
+
+      function init() {
+        resize();
+        particles = [];
+        for (var i = 0; i < COUNT; i++) particles.push(create());
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (var i = 0; i < particles.length; i++) {
+          for (var j = i + 1; j < particles.length; j++) {
+            var dx = particles[i].x - particles[j].x;
+            var dy = particles[i].y - particles[j].y;
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d < DIST) {
+              var alpha = (1 - d / DIST) * 0.04;
+              var ci = particles[i].c;
+              ctx.strokeStyle = 'rgba(' + ci[0] + ',' + ci[1] + ',' + ci[2] + ',' + alpha + ')';
+              ctx.lineWidth = 0.5;
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+        for (var k = 0; k < particles.length; k++) {
+          var p = particles[k];
+          ctx.fillStyle = 'rgba(' + p.c[0] + ',' + p.c[1] + ',' + p.c[2] + ',' + p.a + ')';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -10) p.x = w + 10;
+          if (p.x > w + 10) p.x = -10;
+          if (p.y < -10) p.y = h + 10;
+          if (p.y > h + 10) p.y = -10;
+        }
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      init();
+      draw();
+    })();
+
+    // ---- Scroll Reveal ----
+    (function() {
+      var reveals = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) {
+        reveals.forEach(function(el) { el.classList.add('visible'); });
+        return;
+      }
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+      reveals.forEach(function(el) { observer.observe(el); });
+    })();
+
+    // ---- Hero Motion Animations ----
+    document.addEventListener('DOMContentLoaded', function() {
+      function waitForMotion(cb) {
+        if (typeof Motion !== 'undefined' && Motion.animate) cb(Motion);
+        else if (typeof motion !== 'undefined' && motion.animate) cb(motion);
+        else setTimeout(function() { waitForMotion(cb); }, 80);
+      }
+
+      waitForMotion(function(M) {
+        var heroEls = document.querySelectorAll('[data-hero="fade"]');
+        heroEls.forEach(function(el) {
+          var delay = parseInt(el.getAttribute('data-delay') || '0', 10);
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(24px)';
+          setTimeout(function() {
+            M.animate(el, { opacity: 1, transform: 'translateY(0px)' }, { duration: 0.7, easing: [0.16, 1, 0.3, 1] });
+          }, delay);
+        });
+
+        // Feature cards entrance
+        var cards = document.querySelectorAll('[data-animate="feature"]');
+        cards.forEach(function(card, i) {
+          card.style.opacity = '0';
+          card.style.transform = 'translateY(28px)';
+        });
+
+        var cardObserver = new IntersectionObserver(function(entries) {
+          var idx = 0;
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              var el = entry.target;
+              setTimeout(function() {
+                M.animate(el, { opacity: 1, transform: 'translateY(0px)' }, { duration: 0.55, easing: [0.16, 1, 0.3, 1] });
+              }, idx * 80);
+              idx++;
+              cardObserver.unobserve(el);
+            }
+          });
+        }, { threshold: 0.12 });
+        cards.forEach(function(c) { cardObserver.observe(c); });
+      });
+    });
+
+    // ---- Install Copy ----
+    document.querySelector('.hero-install').addEventListener('click', function() {
+      var code = this.querySelector('code').textContent;
+      navigator.clipboard.writeText(code).then(function() {
+        var icon = document.querySelector('.hero-install .copy-icon');
+        icon.style.color = '#34d399';
+        icon.style.opacity = '1';
+        setTimeout(function() { icon.style.color = ''; icon.style.opacity = ''; }, 1500);
+      });
+    });
+  </script>
+</body>
+</html>
