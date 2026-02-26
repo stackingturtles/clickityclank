@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Run tests on self-hosted Ubuntu
-    runs-on: [self-hosted, Linux, X64, ubuntu]
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout
