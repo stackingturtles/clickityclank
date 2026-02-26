@@ -107,8 +107,9 @@ Example:
 }
 ```
 
-Important naming rule:
-- `accountId` must match `agentId` for clean pinning (e.g. `frontend → frontend`).
+Important routing rule:
+- By default, `accountId` should match `agentId` for clean pinning (e.g. `frontend → frontend`).
+- If you use `--project-scoped-agents`, clickityclank maps to project-specific agent IDs (e.g. `linearstories-frontend`) while reusing runtime account IDs (e.g. `frontend`).
 
 Restart gateway after config edits:
 
@@ -164,6 +165,7 @@ clickityclank project create linearstories \
   --map mobiledev:mobiledev \
   --map infra:infra \
   --create-missing-agents \
+  --project-scoped-agents \
   --plan --dry-run
 ```
 
@@ -171,6 +173,12 @@ Review plan output for:
 - category/channels
 - bindings
 - workspace paths (`~/.openclaw/workspace-<project>-<channel>`)
+
+New behavior (built-in):
+- clickityclank now auto-manages Discord channel scopes in OpenClaw config:
+  - global guild allowlist for mapped channels
+  - per-account guild/channel scopes (when account mapping exists)
+- this prevents cross-bot replies without manual config edits
 
 ---
 
@@ -184,7 +192,8 @@ clickityclank project create linearstories \
   --map qa:qa \
   --map mobiledev:mobiledev \
   --map infra:infra \
-  --create-missing-agents
+  --create-missing-agents \
+  --project-scoped-agents
 ```
 
 Restart after apply:
@@ -207,6 +216,22 @@ Then test in Discord:
 - `#qa` should reply from QA bot only
 - `#mobiledev` should reply from Mobiledev bot only
 - `#infra` should reply from Infra bot only
+
+---
+
+## Step 11) Sync + drift checks (recommended)
+
+If channels/config drift over time (manual edits, deleted/recreated channels), run:
+
+```bash
+clickityclank project sync linearstories --create-missing-agents
+clickityclank doctor --json
+```
+
+Doctor now warns on:
+- mapped agent/account mismatches
+- binding exists but per-account channel scope missing
+- global guild allowlist missing mapped channel
 
 ---
 
