@@ -3,6 +3,7 @@ export type Json = string | number | boolean | null | Json[] | { [k: string]: Js
 export type MapEntry = {
   channel: string;
   agentId: string;
+  accountId?: string;
 };
 
 export type ProjectManifest = {

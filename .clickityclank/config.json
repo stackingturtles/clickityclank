@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "openclawConfigPath": "/Users/developer/.openclaw/openclaw.json",
+  "machineGlobalStatePath": "/Users/developer/.openclaw/clickityclank/state.json",
+  "defaultWorkspaceRoot": "/Users/developer/.openclaw",
+  "templatesRoot": "/Users/developer/.clickityclank/templates/roles",
+  "templateRoles": [
+    "frontend",
+    "backend",
+    "qa",
+    "mobiledev"
+  ],
+  "discord": {
+    "guildId": "REQUIRED",
+    "profile": "explicit-mapping-only"
+  }
+}

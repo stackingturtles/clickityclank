@@ -32,6 +32,14 @@ async function resolveMaps(opts: { map?: string[]; mapsFile?: string }) {
   return { maps: parseMapFlags(mapFlags) };
 }
 
+function applyProjectScopedAgents(name: string, maps: { channel: string; agentId: string }[]) {
+  return maps.map((m) => ({
+    channel: m.channel,
+    agentId: `${name}-${m.agentId}`,
+    accountId: m.agentId
+  }));
+}
+
 export function registerProject(program: Command) {
   const project = program.command("project").description("Project operations");
 
@@ -50,6 +58,7 @@ export function registerProject(program: Command) {
     .option("--maps-file <path>")
     .option("--discord-token <token>")
     .option("--create-missing-agents")
+    .option("--project-scoped-agents", "Create/use project-specific agent IDs and reuse role-matched account IDs")
     .option("--overwrite-templates")
     .option("--dry-run")
     .option("--plan")
@@ -58,7 +67,8 @@ export function registerProject(program: Command) {
       const token = getToken(opts);
       if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
 
-      const { maps } = await resolveMaps(opts);
+      const { maps: inputMaps } = await resolveMaps(opts);
+      const maps = opts.projectScopedAgents ? applyProjectScopedAgents(name, inputMaps) : inputMaps;
       const cfg = await loadOpenClawConfig();
       ensureAgents(cfg, maps, name, !!opts.createMissingAgents);
 
@@ -68,6 +78,7 @@ export function registerProject(program: Command) {
         plan.discord.create.push(`channel:${name}/${m.channel}`);
         plan.filesystem.create.push(workspacePathFor(name, m.channel));
         plan.openclaw.patch.push(`binding:${name}/${m.channel}->${m.agentId}`);
+        plan.openclaw.patch.push(`scope:global+account channel ${m.channel}`);
       }
 
       if (opts.plan || opts.dryRun) {
@@ -143,6 +154,7 @@ export function registerProject(program: Command) {
       for (const cid of Object.values(p.channelIds)) plan.discord.delete.push(`channel:${cid}`);
       plan.discord.delete.push(`category:${p.categoryId}`);
       plan.openclaw.patch.push(`remove bindings for ${name}`);
+      plan.openclaw.patch.push(`remove channel scopes for ${name}`);
       for (const ws of Object.values(p.workspacePaths || {})) plan.filesystem.delete.push(ws);
 
       if (opts.plan || opts.dryRun) {
@@ -171,7 +183,7 @@ export function registerProject(program: Command) {
       const cfg = await loadOpenClawConfig();
       const backup = await backupOpenClawConfig();
       try {
-        removeProjectBindings(cfg, name, p.guildId, p.channelIds);
+        removeProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps);
         await saveOpenClawConfig(cfg);
       } catch (e) {
         await restoreOpenClawBackup(backup);
@@ -185,6 +197,144 @@ export function registerProject(program: Command) {
       const out = { ok: true, deleted: name };
       if (opts.json) return printJson(out);
       console.log(`deleted ${name}`);
+    });
+
+  project
+    .command("sync <name>")
+    .description("Reconcile local state with Discord and OpenClaw config")
+    .option("--discord-token <token>")
+    .option("--dry-run")
+    .option("--plan")
+    .option("--json")
+    .action(async (name, opts) => {
+      const state = await loadState();
+      const p = state.projects[name];
+      if (!p) throw new Error(`Project not found in state: ${name}`);
+
+      const token = getToken(opts);
+      if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
+
+      const guildChannels = await listGuildChannels(token, p.guildId);
+
+      const actions: string[] = [];
+      let category = guildChannels.find((c) => c.type === 4 && c.id === p.categoryId);
+      let categoryRecreated = false;
+      if (!category) {
+        actions.push(`recreate category:${name}`);
+        if (!(opts.plan || opts.dryRun)) {
+          category = await createCategory(token, p.guildId, name);
+          p.categoryId = category.id;
+          categoryRecreated = true;
+        }
+      }
+
+      const updatedChannelIds: Record<string, string> = { ...p.channelIds };
+
+      for (const m of p.maps) {
+        const expectedId = p.channelIds[m.channel];
+        const exists = expectedId && guildChannels.some((c) => c.id === expectedId);
+        if (!exists) {
+          actions.push(`recreate channel:${name}/${m.channel}`);
+          if (!(opts.plan || opts.dryRun) && category) {
+            const ch = await createTextChannel(token, p.guildId, category.id, m.channel);
+            updatedChannelIds[m.channel] = ch.id;
+          }
+        }
+      }
+
+      const channelsChanged = Object.entries(updatedChannelIds).some(
+        ([k, v]) => p.channelIds[k] !== v
+      ) || categoryRecreated;
+
+      if (channelsChanged) {
+        actions.push("update bindings + scopes");
+      }
+
+      for (const m of p.maps) {
+        const ws = workspacePathFor(name, m.channel);
+        try {
+          await import("node:fs/promises").then((fs) => fs.access(ws));
+        } catch {
+          actions.push(`recreate workspace:${ws}`);
+          if (!(opts.plan || opts.dryRun)) {
+            await ensureWorkspace(name, m.channel);
+            await applyTemplates({
+              project: name,
+              channel: m.channel,
+              agentId: m.agentId,
+              workspacePath: ws,
+              overwrite: false
+            });
+          }
+        }
+      }
+
+      if (opts.plan || opts.dryRun) {
+        const result = { ok: true, project: name, actions };
+        if (opts.json) return printJson(result);
+        if (actions.length === 0) {
+          console.log(`${name}: in sync`);
+        } else {
+          console.log(`${name}: ${actions.length} action(s) needed`);
+          for (const a of actions) console.log(`  - ${a}`);
+        }
+        return;
+      }
+
+      if (channelsChanged) {
+        const cfg = await loadOpenClawConfig();
+        const backup = await backupOpenClawConfig();
+        try {
+          upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps);
+          await saveOpenClawConfig(cfg);
+        } catch (e) {
+          await restoreOpenClawBackup(backup);
+          throw e;
+        }
+      }
+
+      p.channelIds = updatedChannelIds;
+      p.updatedAt = new Date().toISOString();
+      await saveState(state);
+
+      const out = { ok: true, project: name, actions, channelIds: updatedChannelIds };
+      if (opts.json) return printJson(out);
+      if (actions.length === 0) {
+        console.log(`${name}: in sync`);
+      } else {
+        console.log(`${name}: synced (${actions.length} action(s))`);
+        for (const a of actions) console.log(`  - ${a}`);
+      }
+    });
+
+  project
+    .command("sync <name>")
+    .option("--create-missing-agents")
+    .option("--json")
+    .action(async (name, opts) => {
+      const state = await loadState();
+      const p = state.projects[name];
+      if (!p) throw new Error(`Project not found in state: ${name}`);
+
+      const cfg = await loadOpenClawConfig();
+      ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
+
+      const backup = await backupOpenClawConfig();
+      try {
+        upsertProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps);
+        await saveOpenClawConfig(cfg);
+      } catch (e) {
+        await restoreOpenClawBackup(backup);
+        throw e;
+      }
+
+      const out = {
+        ok: true,
+        project: name,
+        syncedBindings: Object.keys(p.channelIds || {}).length
+      };
+      if (opts.json) return printJson(out);
+      console.log(JSON.stringify(out, null, 2));
     });
 
   project.command("list").option("--json").action(async (opts) => {

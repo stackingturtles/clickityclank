@@ -130,8 +130,11 @@ clickityclank project create linearstories \
   --map qa:qa \
   --map mobiledev:mobiledev \
   --map infra:infra \
+  --project-scoped-agents \
   --plan --dry-run
 ```
+
+With `--project-scoped-agents`, maps become project-specific agent IDs (e.g. `linearstories-frontend`) while reusing the role bot account (`frontend`).
 
 ### 4) Apply for real
 
@@ -142,7 +145,8 @@ clickityclank project create linearstories \
   --map backend:backend \
   --map qa:qa \
   --map mobiledev:mobiledev \
-  --map infra:infra
+  --map infra:infra \
+  --project-scoped-agents
 ```
 
 ---
@@ -151,8 +155,9 @@ clickityclank project create linearstories \
 
 - `clickityclank init [--roles <csv>] [--json]`
 - `clickityclank doctor [--json] [--discord-token <token>]`
-- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
+- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--project-scoped-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
+- `clickityclank project sync <name> [--create-missing-agents] [--json]`
 - `clickityclank project list [--json]`
 - `clickityclank project show <name> [--json]`
 

@@ -37,7 +37,9 @@ export function ensureAgents(cfg: OpenClawConfig, maps: MapEntry[], project: str
     qa: "🧪",
     handoff: "🤝",
     release: "🚀",
-    mobile: "📱"
+    mobile: "📱",
+    mobiledev: "📱",
+    infra: "☁️"
   };
 
   for (const m of maps) {
@@ -76,6 +78,57 @@ function shouldRemoveProjectChannelBinding(binding: any, guildId: string, channe
   return false;
 }
 
+function ensureDiscordScopeRoots(cfg: OpenClawConfig) {
+  cfg.channels = cfg.channels || {};
+  cfg.channels.discord = cfg.channels.discord || {};
+  cfg.channels.discord.guilds = cfg.channels.discord.guilds || {};
+  cfg.channels.discord.accounts = cfg.channels.discord.accounts || {};
+}
+
+function ensureGlobalGuildChannelScope(cfg: OpenClawConfig, guildId: string, channelId: string) {
+  ensureDiscordScopeRoots(cfg);
+  cfg.channels.discord.guilds[guildId] = cfg.channels.discord.guilds[guildId] || {};
+  cfg.channels.discord.guilds[guildId].channels = cfg.channels.discord.guilds[guildId].channels || {};
+  cfg.channels.discord.guilds[guildId].channels[channelId] = {
+    allow: true,
+    requireMention: false,
+    ...(cfg.channels.discord.guilds[guildId].channels[channelId] || {})
+  };
+}
+
+function ensurePerAccountChannelScope(cfg: OpenClawConfig, accountId: string, guildId: string, channelId: string) {
+  ensureDiscordScopeRoots(cfg);
+  const account = cfg.channels.discord.accounts?.[accountId];
+  if (!account) return;
+  account.guilds = account.guilds || {};
+  account.guilds[guildId] = account.guilds[guildId] || {};
+  account.guilds[guildId].channels = account.guilds[guildId].channels || {};
+  account.guilds[guildId].channels[channelId] = {
+    allow: true,
+    requireMention: false,
+    ...(account.guilds[guildId].channels[channelId] || {})
+  };
+}
+
+function removeGlobalGuildChannelScope(cfg: OpenClawConfig, guildId: string, channelId: string) {
+  const channels = cfg?.channels?.discord?.guilds?.[guildId]?.channels;
+  if (!channels) return;
+  delete channels[channelId];
+}
+
+function removePerAccountChannelScope(cfg: OpenClawConfig, accountId: string, guildId: string, channelId: string) {
+  const channels = cfg?.channels?.discord?.accounts?.[accountId]?.guilds?.[guildId]?.channels;
+  if (!channels) return;
+  delete channels[channelId];
+}
+
+function resolveAccountIdForMap(cfg: OpenClawConfig, m: MapEntry): string | undefined {
+  const accountIds = new Set<string>(Object.keys(cfg?.channels?.discord?.accounts || {}));
+  if (m.accountId && accountIds.has(m.accountId)) return m.accountId;
+  if (accountIds.has(m.agentId)) return m.agentId;
+  return undefined;
+}
+
 export function upsertProjectBindings(
   cfg: OpenClawConfig,
   project: string,
@@ -92,8 +145,6 @@ export function upsertProjectBindings(
       !shouldRemoveLegacyProjectBinding(b, project) && !shouldRemoveProjectChannelBinding(b, guildId, channelIdSet)
   );
 
-  const accountIds = new Set<string>(Object.keys(cfg?.channels?.discord?.accounts || {}));
-
   for (const m of maps) {
     const channelId = channelIds[m.channel];
     if (!channelId) continue;
@@ -107,9 +158,13 @@ export function upsertProjectBindings(
       }
     };
 
-    if (accountIds.has(m.agentId)) {
-      match.accountId = m.agentId;
+    const accountId = resolveAccountIdForMap(cfg, m);
+    if (accountId) {
+      match.accountId = accountId;
+      ensurePerAccountChannelScope(cfg, accountId, guildId, String(channelId));
     }
+
+    ensureGlobalGuildChannelScope(cfg, guildId, String(channelId));
 
     cfg.bindings.push({
       agentId: m.agentId,
@@ -122,7 +177,8 @@ export function removeProjectBindings(
   cfg: OpenClawConfig,
   project: string,
   guildId?: string,
-  channelIds?: Record<string, string>
+  channelIds?: Record<string, string>,
+  maps?: MapEntry[]
 ) {
   const channelIdSet = new Set(Object.values(channelIds || {}).map(String));
 
@@ -131,6 +187,22 @@ export function removeProjectBindings(
     if (guildId && channelIdSet.size > 0 && shouldRemoveProjectChannelBinding(b, guildId, channelIdSet)) return false;
     return true;
   });
+
+  if (!guildId || !channelIds) return;
+
+  const mappedAccountIds = new Set<string>();
+  for (const m of maps || []) {
+    const accountId = resolveAccountIdForMap(cfg, m);
+    if (accountId) mappedAccountIds.add(accountId);
+  }
+
+  for (const channelId of Object.values(channelIds)) {
+    const cid = String(channelId);
+    removeGlobalGuildChannelScope(cfg, guildId, cid);
+    for (const accountId of mappedAccountIds) {
+      removePerAccountChannelScope(cfg, accountId, guildId, cid);
+    }
+  }
 }
 
 export async function saveOpenClawConfig(cfg: OpenClawConfig) {
