@@ -11,10 +11,10 @@ You need two classes of Discord bots:
    - Token exported as `CLICKITYCLANK_DISCORD_TOKEN`
 
 2. **Runtime role bots**
-   - The actual bot identities that reply in mapped channels
-   - Example: `frontend`, `backend`, `qa`
+   - The bot identities that reply in mapped channels
+   - Example: `frontend`, `backend`, `qa`, `mobiledev`, `infra`
 
-If you skip runtime role bots, channels may reply from the wrong existing bot identity.
+If you skip runtime role bots, channels may reply from the wrong identity.
 
 ---
 
@@ -27,6 +27,8 @@ Create these apps:
 - `Frontend`
 - `Backend`
 - `QA`
+- `Mobiledev`
+- `Infra`
 
 For each app:
 1. Click **New Application**
@@ -37,7 +39,22 @@ For each app:
 
 ---
 
-## Step 2) Set required bot permissions + invite bots
+## Step 2) Enable required intents (important)
+
+For **each bot app**: **Bot → Privileged Gateway Intents**
+
+Enable:
+- ✅ **Message Content Intent**
+
+Leave off unless you specifically need them:
+- ⛔ Presence Intent
+- ⛔ Server Members Intent
+
+Without Message Content Intent, bots may not reliably read normal channel messages.
+
+---
+
+## Step 3) Set required bot permissions + invite bots
 
 For each app, go to **OAuth2 → URL Generator**.
 
@@ -45,7 +62,7 @@ For each app, go to **OAuth2 → URL Generator**.
 - `bot`
 
 ### Bot permissions
-Minimum recommended:
+Minimum recommended for runtime bots:
 - View Channels
 - Read Message History
 - Send Messages
@@ -57,7 +74,7 @@ Open generated URL and invite each bot to your target server.
 
 ---
 
-## Step 3) Get your Discord Guild ID
+## Step 4) Get your Discord Guild ID
 
 In Discord app:
 1. **User Settings → Advanced → Developer Mode = ON**
@@ -68,7 +85,7 @@ Save that value for `--guild-id`.
 
 ---
 
-## Step 4) Configure OpenClaw runtime Discord accounts
+## Step 5) Configure OpenClaw runtime Discord accounts
 
 In `~/.openclaw/openclaw.json`, ensure `channels.discord.accounts` includes runtime accounts matching your role agent IDs.
 
@@ -79,9 +96,11 @@ Example:
   "channels": {
     "discord": {
       "accounts": {
-        "frontend": { "name": "Frontend", "botToken": "DISCORD_TOKEN_FRONTEND" },
-        "backend": { "name": "Backend", "botToken": "DISCORD_TOKEN_BACKEND" },
-        "qa": { "name": "QA", "botToken": "DISCORD_TOKEN_QA" }
+        "frontend": { "name": "Frontend", "token": "DISCORD_TOKEN_FRONTEND" },
+        "backend": { "name": "Backend", "token": "DISCORD_TOKEN_BACKEND" },
+        "qa": { "name": "QA", "token": "DISCORD_TOKEN_QA" },
+        "mobiledev": { "name": "Mobiledev", "token": "DISCORD_TOKEN_MOBILEDEV" },
+        "infra": { "name": "Infra", "token": "DISCORD_TOKEN_INFRA" }
       }
     }
   }
@@ -89,7 +108,7 @@ Example:
 ```
 
 Important naming rule:
-- `accountId` must match agent id for auto-pinning (`frontend`, `backend`, `qa`).
+- `accountId` must match `agentId` for clean pinning (e.g. `frontend → frontend`).
 
 Restart gateway after config edits:
 
@@ -99,7 +118,7 @@ openclaw gateway restart
 
 ---
 
-## Step 5) Install and initialize clickityclank
+## Step 6) Install and initialize clickityclank
 
 ```bash
 git clone https://github.com/stackingturtles/clickityclank.git
@@ -112,7 +131,7 @@ npm link
 Initialize templates (example role set):
 
 ```bash
-clickityclank init --roles frontend,backend,qa,mobiledev,pythonista,rustdev,soliditydev,infra
+clickityclank init --roles frontend,backend,qa,mobiledev,infra
 ```
 
 Templates are seeded under:
@@ -121,7 +140,7 @@ Templates are seeded under:
 
 ---
 
-## Step 6) Set provisioning token + verify doctor
+## Step 7) Set provisioning token + verify doctor
 
 Use the **ClickityClank Admin** bot token:
 
@@ -134,7 +153,7 @@ You want Discord auth + OpenClaw config checks to pass.
 
 ---
 
-## Step 7) Plan project creation first
+## Step 8) Plan project creation first
 
 ```bash
 clickityclank project create linearstories \
@@ -142,6 +161,8 @@ clickityclank project create linearstories \
   --map frontend:frontend \
   --map backend:backend \
   --map qa:qa \
+  --map mobiledev:mobiledev \
+  --map infra:infra \
   --create-missing-agents \
   --plan --dry-run
 ```
@@ -153,7 +174,7 @@ Review plan output for:
 
 ---
 
-## Step 8) Apply for real
+## Step 9) Apply for real
 
 ```bash
 clickityclank project create linearstories \
@@ -161,34 +182,50 @@ clickityclank project create linearstories \
   --map frontend:frontend \
   --map backend:backend \
   --map qa:qa \
+  --map mobiledev:mobiledev \
+  --map infra:infra \
   --create-missing-agents
+```
+
+Restart after apply:
+
+```bash
+openclaw gateway restart
 ```
 
 ---
 
-## Step 9) Verify mapping
+## Step 10) Verify mapping
 
 ```bash
 clickityclank project show linearstories --json
 ```
 
 Then test in Discord:
-- `#frontend` should reply from Frontend bot
-- `#backend` should reply from Backend bot
-- `#qa` should reply from QA bot
+- `#frontend` should reply from Frontend bot only
+- `#backend` should reply from Backend bot only
+- `#qa` should reply from QA bot only
+- `#mobiledev` should reply from Mobiledev bot only
+- `#infra` should reply from Infra bot only
 
 ---
 
 ## Common issues
 
+### `ERROR Missing Access (50001)`
+The provisioning bot is not in the guild, wrong token is exported, or invited to the wrong server.
+
 ### `ERROR Missing Permissions (50013)`
 Provisioning bot lacks `Manage Channels` in server/category role permissions.
 
 ### No reply in mapped channel
-Usually allowlist/policy issue. Confirm channel is allowed under `channels.discord.guilds.<guildId>.channels` and gateway restarted.
+Usually allowlist/policy or Message Content Intent issue. Confirm:
+- Message Content Intent is enabled for that bot app
+- channel is allowlisted under Discord guild/channel config
+- gateway restarted
 
-### Wrong bot identity replies
-Runtime `accountId` doesn’t match mapped `agentId`, or old broad bindings still exist.
+### Wrong bot identity replies or all bots reply
+Runtime `accountId` doesn’t match mapped `agentId`, old broad bindings exist, or account-level scoping is missing.
 
 ### `Unknown agent id`
 Use `--create-missing-agents` or pre-create agents manually.
