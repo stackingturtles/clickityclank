@@ -141,6 +141,115 @@ Templates are seeded under:
 
 ---
 
+## Step 6a) Set up skill-specific agent templates (optional but recommended)
+
+clickityclank uses **channel names** to resolve role templates. When you create a project, each channel gets its own agent workspace with rendered `AGENTS.md` and `SOUL.md` files copied from `~/.clickityclank/templates/roles/<role>/`.
+
+### How templates work
+
+1. **Template storage**: `~/.clickityclank/templates/roles/<role>/AGENTS.md` and `SOUL.md`
+2. **Channel → role resolution**: Channel name (from `--map <channel>:agentId`) maps to role template directory
+   - Direct match: `solidity-audit` channel → `~/.clickityclank/templates/roles/solidity-audit/`
+   - Alias fallback: `fe` → `frontend`, `be` → `backend`, `mobile` → `mobiledev`
+3. **Workspace copy**: When you run `project create`, clickityclank:
+   - Creates `~/.openclaw/workspace-<project>-<channel>/`
+   - Renders `AGENTS.md` and `SOUL.md` from templates using `{{project}}`, `{{channel}}`, `{{agentId}}` variables
+   - Writes rendered files into workspace (skips existing files unless `--overwrite-templates` is used)
+
+### Example: Setting up specialized security auditor agents
+
+Create skill-specific templates:
+
+```bash
+# Seed new role templates (only creates missing files, won't overwrite existing)
+clickityclank init --roles solidity-audit,frontend-security,backend-security
+```
+
+Edit each template to define the agent's skill:
+
+**`~/.clickityclank/templates/roles/solidity-audit/AGENTS.md`**:
+```markdown
+# {{project}} {{channel}} Agent
+
+You are a Solidity smart contract security auditor for {{project}}.
+
+## Focus
+- Comprehensive vulnerability assessment (reentrancy, access control, arithmetic)
+- Gas optimization analysis
+- Best practice validation (Checks-Effects-Interactions, OpenZeppelin patterns)
+- Formal verification recommendations
+- Audit report generation with severity ratings
+
+## Workflow
+- Review contract code in detail
+- Use static analysis tools (Slither, Mythril)
+- Write proof-of-concept exploits when applicable
+- Coordinate with backend team for off-chain integration security
+```
+
+**`~/.clickityclank/templates/roles/solidity-audit/SOUL.md`**:
+```markdown
+# SOUL.md
+
+You are {{agentId}} for {{project}} ({{channel}}).
+
+You are a meticulous security auditor. Every finding must be:
+- Reproducible with code or steps
+- Classified by severity (Critical/High/Medium/Low/Info)
+- Accompanied by mitigation recommendations
+
+Stay sharp, thorough, and uncompromising on security.
+```
+
+Repeat for `frontend-security` and `backend-security` with their own domain-specific instructions.
+
+### Using skill templates in projects
+
+When creating a project, map channels to agents with matching template names:
+
+```bash
+clickityclank project create defi-protocol \
+  --guild-id YOUR_GUILD_ID \
+  --map solidity-audit:solidity-audit \
+  --map frontend-security:frontend-security \
+  --map backend-security:backend-security \
+  --create-missing-agents \
+  --project-scoped-agents \
+  --plan --dry-run
+```
+
+With `--project-scoped-agents`, this creates:
+- Agent IDs: `defi-protocol-solidity-audit`, `defi-protocol-frontend-security`, `defi-protocol-backend-security`
+- Account IDs (runtime bots): `solidity-audit`, `frontend-security`, `backend-security`
+- Workspaces: `~/.openclaw/workspace-defi-protocol-solidity-audit/` with rendered `AGENTS.md` and `SOUL.md`
+
+### Template overwrite behavior
+
+- **Default (no flag)**: Existing workspace `AGENTS.md`/`SOUL.md` files are **skipped** (preserves manual edits)
+- **`--overwrite-templates`**: Existing workspace files are **replaced** with freshly rendered templates
+- **`project sync`**: Only reapplies templates when workspace is missing/recreated (always uses `overwrite: false`)
+
+### Template not found error
+
+If you map a channel without a matching template:
+
+```bash
+clickityclank project create foo --map unknown-skill:agent-id ...
+# ERROR: Missing templates for role 'unknown-skill' at ~/.clickityclank/templates/roles/unknown-skill
+```
+
+Fix: Either create the template first (`clickityclank init --roles unknown-skill`) or use an existing template name/alias.
+
+### Best practices for skill templates
+
+1. **Use explicit channel names**: `solidity-audit` is clearer than `audit` or `sol`
+2. **Domain-specific instructions**: Include tools, patterns, workflows specific to that skill
+3. **Keep SOUL.md concise**: High-level identity and behavioral traits only
+4. **Keep AGENTS.md detailed**: Concrete tasks, checklists, coordination protocols
+5. **Version control your templates**: Keep `~/.clickityclank/templates/` in a private dotfiles repo for team consistency
+
+---
+
 ## Step 7) Set provisioning token + verify doctor
 
 Use the **ClickityClank Admin** bot token:
