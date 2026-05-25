@@ -8,6 +8,7 @@ export function emptyPlan(): Plan {
   return {
     discord: { create: [], delete: [] },
     openclaw: { patch: [] },
+    hermes: { patch: [] },
     filesystem: { create: [], delete: [] }
   };
 }

@@ -33,6 +33,7 @@ export function evaluateProjectDriftChecks(cfg: any, state: GlobalState): Check[
   const accounts = cfg?.channels?.discord?.accounts || {};
 
   for (const [projectName, p] of Object.entries(state.projects || {})) {
+    if ((p.runtime || "openclaw") === "hermes") continue;
     for (const m of p.maps || []) {
       const channelId = p.channelIds?.[m.channel];
       if (!channelId) continue;
