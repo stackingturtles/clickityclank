@@ -44,6 +44,7 @@ export type HermesConfigFragment = {
     require_mention: boolean;
     free_response_channels: string[];
     no_thread_channels: string[];
+    auto_thread: boolean;
     reply_to_mode: "off" | "first" | "all";
     allow_mentions: {
       everyone: boolean;
@@ -52,15 +53,7 @@ export type HermesConfigFragment = {
       replied_user: boolean;
     };
     channel_prompts: Record<string, string>;
-  };
-  gateway: {
-    platforms: {
-      discord: {
-        extra: {
-          channel_skill_bindings: { id: string; skills: string[] }[];
-        };
-      };
-    };
+    channel_skill_bindings: { id: string; skills: string[] }[];
   };
 };
 

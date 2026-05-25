@@ -58,9 +58,10 @@ describe("Hermes runtime support", () => {
     const fragment = buildHermesConfigFragment(routes);
 
     expect(fragment.group_sessions_per_user).toBe(false);
-    expect(fragment.discord.require_mention).toBe(true);
+    expect(fragment.discord.require_mention).toBe(false);
     expect(fragment.discord.free_response_channels).toEqual(["111", "222"]);
     expect(fragment.discord.no_thread_channels).toEqual(["111", "222"]);
+    expect(fragment.discord.auto_thread).toBe(false);
     expect(fragment.discord.reply_to_mode).toBe("off");
     expect(fragment.discord.allow_mentions).toEqual({
       everyone: false,
@@ -70,7 +71,7 @@ describe("Hermes runtime support", () => {
     });
     expect(fragment.discord.channel_prompts["111"]).toContain("frontend expert");
     expect(fragment.discord.channel_prompts["111"]).toContain("/Users/developer/code/linearstories/AGENTS.md");
-    expect(fragment.gateway.platforms.discord.extra.channel_skill_bindings).toEqual([
+    expect(fragment.discord.channel_skill_bindings).toEqual([
       { id: "111", skills: ["frontend"] },
       { id: "222", skills: ["backend", "typescript"] }
     ]);

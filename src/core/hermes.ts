@@ -110,9 +110,12 @@ export function buildHermesConfigFragment(routesFile: HermesRoutesFile): HermesC
   return {
     group_sessions_per_user: false,
     discord: {
-      require_mention: true,
+      // Project role channels should behave like normal in-channel chat:
+      // no @mention gate, no auto-thread fan-out, no reply pings.
+      require_mention: false,
       free_response_channels: channelIds,
       no_thread_channels: channelIds,
+      auto_thread: false,
       reply_to_mode: "off",
       allow_mentions: {
         everyone: false,
@@ -120,16 +123,11 @@ export function buildHermesConfigFragment(routesFile: HermesRoutesFile): HermesC
         users: false,
         replied_user: false
       },
-      channel_prompts
-    },
-    gateway: {
-      platforms: {
-        discord: {
-          extra: {
-            channel_skill_bindings
-          }
-        }
-      }
+      channel_prompts,
+      // Hermes bridges top-level discord.channel_skill_bindings into the
+      // Discord platform extra config at gateway startup. Nesting this under
+      // gateway.platforms.discord.extra is not read from config.yaml.
+      channel_skill_bindings
     }
   };
 }
