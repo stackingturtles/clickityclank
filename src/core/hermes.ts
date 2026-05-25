@@ -113,6 +113,13 @@ export function buildHermesConfigFragment(routesFile: HermesRoutesFile): HermesC
       require_mention: true,
       free_response_channels: channelIds,
       no_thread_channels: channelIds,
+      reply_to_mode: "off",
+      allow_mentions: {
+        everyone: false,
+        roles: false,
+        users: false,
+        replied_user: false
+      },
       channel_prompts
     },
     gateway: {

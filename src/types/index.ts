@@ -44,6 +44,13 @@ export type HermesConfigFragment = {
     require_mention: boolean;
     free_response_channels: string[];
     no_thread_channels: string[];
+    reply_to_mode: "off" | "first" | "all";
+    allow_mentions: {
+      everyone: boolean;
+      roles: boolean;
+      users: boolean;
+      replied_user: boolean;
+    };
     channel_prompts: Record<string, string>;
   };
   gateway: {
