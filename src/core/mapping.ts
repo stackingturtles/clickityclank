@@ -21,7 +21,8 @@ const manifestSchema = z.object({
 
 export function parseMapFlags(values: string[]): MapEntry[] {
   const maps: MapEntry[] = values.map((v) => {
-    const [channel, agentId] = v.split(":");
+    const separator = v.includes(":") ? ":" : "=";
+    const [channel, agentId] = v.split(separator);
     return { channel: channel?.trim(), agentId: agentId?.trim() } as MapEntry;
   });
   return validateMaps(maps);
