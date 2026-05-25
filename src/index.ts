@@ -5,7 +5,7 @@ import { runDoctor } from "./commands/doctor.js";
 import { registerProject } from "./commands/project.js";
 
 const program = new Command();
-program.name("clickityclank").description("Discord/OpenClaw project routing CLI").version("0.1.0");
+program.name("clickityclank").description("Discord/OpenClaw project routing CLI").version("0.2.0");
 
 program
   .command("init")

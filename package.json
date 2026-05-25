@@ -1,6 +1,6 @@
 {
   "name": "clickityclank",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Project/agent Discord + OpenClaw workspace provisioning CLI",
   "type": "module",
   "bin": {
