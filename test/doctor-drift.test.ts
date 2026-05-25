@@ -121,4 +121,25 @@ describe("doctor drift checks", () => {
     const checks = evaluateProjectDriftChecks(cfg, state);
     expect(checks.some((c) => c.errorCode === "GLOBAL_GUILD_ALLOWLIST_MISSING_CHANNEL")).toBe(true);
   });
+
+  it("ignores Hermes projects when evaluating OpenClaw routing drift", () => {
+    const cfg: any = { bindings: [], channels: { discord: { guilds: {}, accounts: {} } } };
+    const state: any = {
+      version: 1,
+      projects: {
+        hermesProject: {
+          runtime: "hermes",
+          guildId: "g1",
+          categoryId: "cat",
+          channelIds: { frontend: "c1" },
+          workspacePaths: {},
+          maps: [{ channel: "frontend", agentId: "frontend" }],
+          updatedAt: new Date().toISOString()
+        }
+      }
+    };
+
+    const checks = evaluateProjectDriftChecks(cfg, state);
+    expect(checks).toEqual([{ name: "project-routing-drift", status: "pass", evidence: "no drift detected" }]);
+  });
 });

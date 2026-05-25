@@ -15,8 +15,15 @@ import {
   upsertProjectBindings
 } from "../core/openclaw.js";
 import { createCategory, createTextChannel, deleteChannel, listGuildChannels } from "../core/discord.js";
-import { workspacePathFor } from "../core/paths.js";
+import { CLICKITYCLANK_HERMES_CONFIG_FRAGMENT, CLICKITYCLANK_HERMES_ROUTES, workspacePathFor } from "../core/paths.js";
 import { applyTemplates } from "../core/templates.js";
+import {
+  buildHermesRoutes,
+  ensureProjectContext,
+  removeProjectHermesRoutes,
+  upsertProjectHermesRoutes
+} from "../core/hermes.js";
+import type { MapEntry, RuntimeKind } from "../types/index.js";
 
 function getToken(cmd: any) {
   return cmd.discordToken || process.env.CLICKITYCLANK_DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
@@ -25,15 +32,28 @@ function getToken(cmd: any) {
 async function resolveMaps(opts: { map?: string[]; mapsFile?: string }) {
   if (opts.mapsFile) {
     const manifest = parseManifest(await readManifest(opts.mapsFile));
-    return { projectFromFile: manifest.project, maps: validateMaps(manifest.maps) };
+    return {
+      projectFromFile: manifest.project,
+      runtimeFromFile: manifest.runtime,
+      repoFromFile: manifest.repo,
+      contextFileFromFile: manifest.contextFile,
+      maps: validateMaps(manifest.maps)
+    };
   }
   const mapFlags = Array.isArray(opts.map) ? opts.map : opts.map ? [opts.map] : [];
   if (!mapFlags.length) throw new Error("Explicit mappings are required. Use --map channel:agentId (repeatable) or --maps-file.");
   return { maps: parseMapFlags(mapFlags) };
 }
 
-function applyProjectScopedAgents(name: string, maps: { channel: string; agentId: string }[]) {
+function resolveRuntime(opts: any, runtimeFromFile?: RuntimeKind): RuntimeKind {
+  const runtime = opts.runtime || runtimeFromFile || "openclaw";
+  if (runtime !== "openclaw" && runtime !== "hermes") throw new Error(`Unsupported runtime: ${runtime}`);
+  return runtime;
+}
+
+function applyProjectScopedAgents(name: string, maps: MapEntry[]): MapEntry[] {
   return maps.map((m) => ({
+    ...m,
     channel: m.channel,
     agentId: `${name}-${m.agentId}`,
     accountId: m.agentId
@@ -56,6 +76,9 @@ export function registerProject(program: Command) {
       [] as string[]
     )
     .option("--maps-file <path>")
+    .option("--runtime <runtime>", "Runtime backend: openclaw or hermes")
+    .option("--repo <path>", "Project repository/workdir for Hermes context")
+    .option("--context-file <path>", "Project AGENTS.md/context file for Hermes")
     .option("--discord-token <token>")
     .option("--create-missing-agents")
     .option("--project-scoped-agents", "Create/use project-specific agent IDs and reuse role-matched account IDs")
@@ -67,22 +90,38 @@ export function registerProject(program: Command) {
       const token = getToken(opts);
       if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
 
-      const { maps: inputMaps } = await resolveMaps(opts);
+      const { maps: inputMaps, runtimeFromFile, repoFromFile, contextFileFromFile } = await resolveMaps(opts);
+      const runtime = resolveRuntime(opts, runtimeFromFile);
+      const repo = opts.repo || repoFromFile;
+      const contextFile = opts.contextFile || contextFileFromFile;
       const maps = opts.projectScopedAgents ? applyProjectScopedAgents(name, inputMaps) : inputMaps;
-      const cfg = await loadOpenClawConfig();
-      ensureAgents(cfg, maps, name, !!opts.createMissingAgents);
+
+      let cfg: any | undefined;
+      if (runtime === "openclaw") {
+        cfg = await loadOpenClawConfig();
+        ensureAgents(cfg, maps, name, !!opts.createMissingAgents);
+      }
 
       const plan = emptyPlan();
       plan.discord.create.push(`category:${name}`);
       for (const m of maps) {
         plan.discord.create.push(`channel:${name}/${m.channel}`);
-        plan.filesystem.create.push(workspacePathFor(name, m.channel));
-        plan.openclaw.patch.push(`binding:${name}/${m.channel}->${m.agentId}`);
-        plan.openclaw.patch.push(`scope:global+account channel ${m.channel}`);
+        if (runtime === "openclaw") {
+          plan.filesystem.create.push(workspacePathFor(name, m.channel));
+          plan.openclaw.patch.push(`binding:${name}/${m.channel}->${m.agentId}`);
+          plan.openclaw.patch.push(`scope:global+account channel ${m.channel}`);
+        } else {
+          plan.hermes.patch.push(`route:${name}/${m.channel}->${m.profile || `${name}-${m.agentId}`}`);
+        }
+      }
+      if (runtime === "hermes") {
+        plan.filesystem.create.push(contextFile || `~/.clickityclank/projects/${name}/AGENTS.md`);
+        plan.hermes.patch.push(CLICKITYCLANK_HERMES_ROUTES);
+        plan.hermes.patch.push(CLICKITYCLANK_HERMES_CONFIG_FRAGMENT);
       }
 
       if (opts.plan || opts.dryRun) {
-        if (opts.json) return printJson({ ok: true, plan });
+        if (opts.json) return printJson({ ok: true, runtime, plan });
         console.log(JSON.stringify(plan, null, 2));
         if (opts.dryRun) return;
       }
@@ -100,40 +139,60 @@ export function registerProject(program: Command) {
         const created = existing ?? (await createTextChannel(token, opts.guildId, category.id, m.channel));
         channelIds[m.channel] = created.id;
 
-        const ws = await ensureWorkspace(name, m.channel);
-        workspacePaths[m.channel] = ws;
-        templateActions.push(
-          ...(await applyTemplates({
-            project: name,
-            channel: m.channel,
-            agentId: m.agentId,
-            workspacePath: ws,
-            overwrite: !!opts.overwriteTemplates
-          }))
-        );
+        if (runtime === "openclaw") {
+          const ws = await ensureWorkspace(name, m.channel);
+          workspacePaths[m.channel] = ws;
+          templateActions.push(
+            ...(await applyTemplates({
+              project: name,
+              channel: m.channel,
+              agentId: m.agentId,
+              workspacePath: ws,
+              overwrite: !!opts.overwriteTemplates
+            }))
+          );
+        }
       }
 
-      const backup = await backupOpenClawConfig();
-      try {
-        upsertProjectBindings(cfg, name, opts.guildId, channelIds, maps);
-        await saveOpenClawConfig(cfg);
-      } catch (e) {
-        await restoreOpenClawBackup(backup);
-        throw e;
+      let hermesRoutesFile: string | undefined;
+      let hermesConfigFragment: string | undefined;
+      let hermesContextFile: string | undefined;
+      if (runtime === "openclaw" && cfg) {
+        const backup = await backupOpenClawConfig();
+        try {
+          upsertProjectBindings(cfg, name, opts.guildId, channelIds, maps);
+          await saveOpenClawConfig(cfg);
+        } catch (e) {
+          await restoreOpenClawBackup(backup);
+          throw e;
+        }
+      } else {
+        const projectContext = await ensureProjectContext({ project: name, repo, maps, contextFile, overwrite: !!opts.overwriteTemplates });
+        templateActions.push(`${projectContext.created ? "created" : "exists"}:${projectContext.path}`);
+        hermesContextFile = projectContext.path;
+        const nextRoutes = buildHermesRoutes({ project: name, guildId: opts.guildId, channelIds, maps, repo, contextFile: projectContext.path });
+        await upsertProjectHermesRoutes(name, nextRoutes);
+        hermesRoutesFile = CLICKITYCLANK_HERMES_ROUTES;
+        hermesConfigFragment = CLICKITYCLANK_HERMES_CONFIG_FRAGMENT;
       }
 
       const state = await loadState();
       state.projects[name] = {
+        runtime,
         guildId: opts.guildId,
         categoryId: category.id,
         channelIds,
         workspacePaths,
         maps,
+        repo,
+        contextFile: runtime === "hermes" ? hermesContextFile : contextFile,
+        hermesRoutesFile,
+        hermesConfigFragment,
         updatedAt: new Date().toISOString()
       };
       await saveState(state);
 
-      const out = { ok: true, project: name, categoryId: category.id, channelIds, workspacePaths, templateActions };
+      const out = { ok: true, runtime, project: name, categoryId: category.id, channelIds, workspacePaths, templateActions, hermesRoutesFile, hermesConfigFragment };
       if (opts.json) return printJson(out);
       console.log(JSON.stringify(out, null, 2));
     });
@@ -151,11 +210,18 @@ export function registerProject(program: Command) {
       if (!p) throw new Error(`Project not found in state: ${name}`);
 
       const plan = emptyPlan();
+      const runtime = p.runtime || "openclaw";
       for (const cid of Object.values(p.channelIds)) plan.discord.delete.push(`channel:${cid}`);
       plan.discord.delete.push(`category:${p.categoryId}`);
-      plan.openclaw.patch.push(`remove bindings for ${name}`);
-      plan.openclaw.patch.push(`remove channel scopes for ${name}`);
-      for (const ws of Object.values(p.workspacePaths || {})) plan.filesystem.delete.push(ws);
+      if (runtime === "openclaw") {
+        plan.openclaw.patch.push(`remove bindings for ${name}`);
+        plan.openclaw.patch.push(`remove channel scopes for ${name}`);
+        for (const ws of Object.values(p.workspacePaths || {})) plan.filesystem.delete.push(ws);
+      } else {
+        plan.hermes.patch.push(`remove routes for ${name}`);
+        plan.hermes.patch.push(CLICKITYCLANK_HERMES_ROUTES);
+        plan.hermes.patch.push(CLICKITYCLANK_HERMES_CONFIG_FRAGMENT);
+      }
 
       if (opts.plan || opts.dryRun) {
         if (opts.json) return printJson({ ok: true, plan });
@@ -180,17 +246,21 @@ export function registerProject(program: Command) {
         // continue cleanup
       }
 
-      const cfg = await loadOpenClawConfig();
-      const backup = await backupOpenClawConfig();
-      try {
-        removeProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps);
-        await saveOpenClawConfig(cfg);
-      } catch (e) {
-        await restoreOpenClawBackup(backup);
-        throw e;
-      }
+      if (runtime === "openclaw") {
+        const cfg = await loadOpenClawConfig();
+        const backup = await backupOpenClawConfig();
+        try {
+          removeProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps);
+          await saveOpenClawConfig(cfg);
+        } catch (e) {
+          await restoreOpenClawBackup(backup);
+          throw e;
+        }
 
-      for (const m of p.maps) await deleteWorkspace(name, m.channel);
+        for (const m of p.maps) await deleteWorkspace(name, m.channel);
+      } else {
+        await removeProjectHermesRoutes(name);
+      }
       delete state.projects[name];
       await saveState(state);
 
@@ -212,8 +282,12 @@ export function registerProject(program: Command) {
       const p = state.projects[name];
       if (!p) throw new Error(`Project not found in state: ${name}`);
 
-      const cfg = await loadOpenClawConfig();
-      ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
+      const runtime = p.runtime || "openclaw";
+      let cfg: any | undefined;
+      if (runtime === "openclaw") {
+        cfg = await loadOpenClawConfig();
+        ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
+      }
 
       const token = getToken(opts);
       if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
@@ -251,26 +325,30 @@ export function registerProject(program: Command) {
       ) || categoryRecreated;
 
       if (channelsChanged) {
-        actions.push("update bindings + scopes");
+        actions.push(runtime === "openclaw" ? "update bindings + scopes" : "update Hermes routes");
       }
 
-      for (const m of p.maps) {
-        const ws = workspacePathFor(name, m.channel);
-        try {
-          await import("node:fs/promises").then((fs) => fs.access(ws));
-        } catch {
-          actions.push(`recreate workspace:${ws}`);
-          if (!(opts.plan || opts.dryRun)) {
-            await ensureWorkspace(name, m.channel);
-            await applyTemplates({
-              project: name,
-              channel: m.channel,
-              agentId: m.agentId,
-              workspacePath: ws,
-              overwrite: false
-            });
+      if (runtime === "openclaw") {
+        for (const m of p.maps) {
+          const ws = workspacePathFor(name, m.channel);
+          try {
+            await import("node:fs/promises").then((fs) => fs.access(ws));
+          } catch {
+            actions.push(`recreate workspace:${ws}`);
+            if (!(opts.plan || opts.dryRun)) {
+              await ensureWorkspace(name, m.channel);
+              await applyTemplates({
+                project: name,
+                channel: m.channel,
+                agentId: m.agentId,
+                workspacePath: ws,
+                overwrite: false
+              });
+            }
           }
         }
+      } else {
+        actions.push("refresh Hermes config fragment");
       }
 
       if (opts.plan || opts.dryRun) {
@@ -285,13 +363,25 @@ export function registerProject(program: Command) {
         return;
       }
 
-      const backup = await backupOpenClawConfig();
-      try {
-        upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps);
-        await saveOpenClawConfig(cfg);
-      } catch (e) {
-        await restoreOpenClawBackup(backup);
-        throw e;
+      if (runtime === "openclaw" && cfg) {
+        const backup = await backupOpenClawConfig();
+        try {
+          upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps);
+          await saveOpenClawConfig(cfg);
+        } catch (e) {
+          await restoreOpenClawBackup(backup);
+          throw e;
+        }
+      } else {
+        const nextRoutes = buildHermesRoutes({
+          project: name,
+          guildId: p.guildId,
+          channelIds: updatedChannelIds,
+          maps: p.maps,
+          repo: p.repo,
+          contextFile: p.contextFile
+        });
+        await upsertProjectHermesRoutes(name, nextRoutes);
       }
 
       p.channelIds = updatedChannelIds;
@@ -318,6 +408,7 @@ export function registerProject(program: Command) {
     const state = await loadState();
     const items = Object.entries(state.projects).map(([name, v]) => ({
       project: name,
+      runtime: v.runtime || "openclaw",
       guildId: v.guildId,
       categoryId: v.categoryId,
       channels: Object.keys(v.channelIds || {}),

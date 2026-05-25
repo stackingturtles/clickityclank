@@ -1,6 +1,6 @@
 # clickityclank
 
-Provision Discord Project→Agent routing and OpenClaw project-role agent workspaces with explicit mappings.
+Provision Discord Project→Agent routing and OpenClaw/Hermes project-role agent workspaces with explicit mappings.
 
 ➡️ **Start here:** [GETTING-STARTED.md](./GETTING-STARTED.md)
 
@@ -8,6 +8,7 @@ Provision Discord Project→Agent routing and OpenClaw project-role agent worksp
 
 - Creates Discord categories/channels for a project
 - Wires OpenClaw bindings using explicit channel→agent maps
+- Writes Hermes Discord channel prompt/skill routing fragments when `--runtime hermes` is selected
 - Creates machine-global state for repeatable operations
 - Supports safe planning with `--plan` and `--dry-run`
 
@@ -155,11 +156,35 @@ clickityclank project create linearstories \
 
 - `clickityclank init [--roles <csv>] [--json]`
 - `clickityclank doctor [--json] [--discord-token <token>]`
-- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--create-missing-agents] [--project-scoped-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
+- `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--runtime openclaw|hermes] [--repo <path>] [--context-file <path>] [--create-missing-agents] [--project-scoped-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
 - `clickityclank project sync <name> [--create-missing-agents] [--plan] [--dry-run] [--json]`
 - `clickityclank project list [--json]`
 - `clickityclank project show <name> [--json]`
+
+---
+
+## Hermes runtime
+
+OpenClaw remains the default runtime. Select Hermes explicitly:
+
+```bash
+clickityclank project create linearstories \
+  --runtime hermes \
+  --guild-id 957153563694473286 \
+  --repo /Users/developer/code/linearstories \
+  --map frontend:frontend \
+  --map backend:backend \
+  --map qa:qa
+```
+
+Hermes mode still provisions the Discord category/channels, but it does **not** mutate `~/.openclaw/openclaw.json` or create per-channel OpenClaw workspaces. It writes:
+
+- project context: `~/.clickityclank/projects/<project>/AGENTS.md` unless `--context-file` is supplied;
+- routes source-of-truth: `~/.clickityclank/hermes/routes.json`;
+- reviewable Hermes config fragment: `~/.clickityclank/hermes/hermes-config.fragment.yaml`.
+
+The fragment uses existing Hermes Discord primitives: `discord.channel_prompts`, `discord.free_response_channels`, `discord.no_thread_channels`, and `gateway.platforms.discord.extra.channel_skill_bindings`. Merge it into `~/.hermes/config.yaml` after review, then restart Hermes gateway.
 
 ---
 
@@ -211,6 +236,8 @@ clickityclank project create sneakerscan \
 - OpenClaw config: `~/.openclaw/openclaw.json`
 - Workspace convention: `~/.openclaw/workspace-<project>-<channel>`
 - Template root: `~/.clickityclank/templates/roles/`
+- Hermes project context: `~/.clickityclank/projects/<project>/AGENTS.md`
+- Hermes routes/config fragments: `~/.clickityclank/hermes/`
 
 ---
 
