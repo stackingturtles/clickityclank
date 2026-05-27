@@ -39,6 +39,10 @@ function defaultContextFile(project: string, contextFile?: string, repo?: string
   return contextFile || path.join(defaultWorkdir(project, repo), "AGENTS.md");
 }
 
+function projectLocalSkillDir(workdir: string) {
+  return path.join(workdir, ".agents", "skills");
+}
+
 export function buildHermesRoutes(opts: BuildHermesRoutesOptions): HermesRoutesFile {
   const routes: Record<string, HermesRoute> = {};
   for (const map of opts.maps) {
@@ -97,6 +101,8 @@ export function buildHermesConfigFragment(routesFile: HermesRoutesFile): HermesC
   const channelIds: string[] = [];
   const channel_prompts: Record<string, string> = {};
   const channel_skill_bindings: { id: string; skills: string[] }[] = [];
+  const externalSkillDirs: string[] = [];
+  const seenExternalSkillDirs = new Set<string>();
 
   for (const [key, route] of routeEntries) {
     const parts = key.split(":");
@@ -105,10 +111,19 @@ export function buildHermesConfigFragment(routesFile: HermesRoutesFile): HermesC
     channelIds.push(channelId);
     channel_prompts[channelId] = promptForRoute(route);
     channel_skill_bindings.push({ id: channelId, skills: route.skills });
+
+    const skillDir = projectLocalSkillDir(route.workdir);
+    if (!seenExternalSkillDirs.has(skillDir)) {
+      seenExternalSkillDirs.add(skillDir);
+      externalSkillDirs.push(skillDir);
+    }
   }
 
   return {
     group_sessions_per_user: false,
+    skills: {
+      external_dirs: externalSkillDirs
+    },
     discord: {
       // Project role channels should behave like normal in-channel chat:
       // no @mention gate, no auto-thread fan-out, no reply pings.
@@ -141,7 +156,10 @@ export function createProjectContext(opts: { project: string; repo?: string; map
     "## Project context"
   ];
   if (opts.repo) lines.push(`- Repo: ${opts.repo}`);
+  const skillDir = projectLocalSkillDir(opts.repo || clickityclankProjectPathFor(opts.project));
+  lines.push(`- Project-local skills: \`${skillDir}\``);
   lines.push("- Keep changes small, testable, and easy to hand off between role channels.");
+  lines.push("- For project-local skills, reference the skill by directory name from `" + skillDir + "/<skill-name>/SKILL.md`.");
   lines.push("", "## Role routing");
   for (const map of opts.maps) {
     const skills = defaultSkills(map);

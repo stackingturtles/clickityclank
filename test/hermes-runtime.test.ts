@@ -77,6 +77,58 @@ describe("Hermes runtime support", () => {
     ]);
   });
 
+  it("includes the project-local skill directory in the Hermes config fragment", () => {
+    const routes = buildHermesRoutes({
+      project: "linearstories",
+      guildId: "guild-1",
+      channelIds: { backend: "222" },
+      maps: [{ channel: "backend", agentId: "backend" }],
+      repo: "/Users/developer/code/linearstories",
+      contextFile: "/Users/developer/code/linearstories/AGENTS.md"
+    });
+
+    expect(buildHermesConfigFragment(routes).skills.external_dirs).toEqual([
+      "/Users/developer/code/linearstories/.agents/skills"
+    ]);
+  });
+
+  it("merges and dedupes external skill directories across multiple projects", () => {
+    const routes = {
+      schemaVersion: 1 as const,
+      routes: {
+        "discord:guild-1:111": { project: "linearstories", channel: "frontend", agentId: "frontend", profile: "linearstories-frontend", skills: ["frontend"], workdir: "/repo/linearstories", contextFile: "/repo/linearstories/AGENTS.md", sessionKeyMode: "channel" as const },
+        "discord:guild-1:222": { project: "linearstories", channel: "backend", agentId: "backend", profile: "linearstories-backend", skills: ["backend"], workdir: "/repo/linearstories", contextFile: "/repo/linearstories/AGENTS.md", sessionKeyMode: "channel" as const },
+        "discord:guild-1:333": { project: "health", channel: "backend", agentId: "backend", profile: "health-backend", skills: ["backend"], workdir: "/repo/health", contextFile: "/repo/health/AGENTS.md", sessionKeyMode: "channel" as const }
+      }
+    };
+
+    expect(buildHermesConfigFragment(routes).skills.external_dirs).toEqual([
+      "/repo/linearstories/.agents/skills",
+      "/repo/health/.agents/skills"
+    ]);
+  });
+
+  it("drops a removed project's external skill directory when no remaining route uses it", () => {
+    const existing = {
+      schemaVersion: 1 as const,
+      routes: {
+        "discord:guild-1:111": { project: "linearstories", channel: "frontend", agentId: "frontend", profile: "linearstories-frontend", skills: ["frontend"], workdir: "/repo/linearstories", contextFile: "/repo/linearstories/AGENTS.md", sessionKeyMode: "channel" as const },
+        "discord:guild-1:333": { project: "health", channel: "backend", agentId: "backend", profile: "health-backend", skills: ["backend"], workdir: "/repo/health", contextFile: "/repo/health/AGENTS.md", sessionKeyMode: "channel" as const }
+      }
+    };
+
+    expect(buildHermesConfigFragment(removeProjectRoutes(existing, "linearstories")).skills.external_dirs).toEqual([
+      "/repo/health/.agents/skills"
+    ]);
+  });
+
+  it("creates a project-level AGENTS.md context that names the project-local skill directory", () => {
+    const content = createProjectContext({ project: "linearstories", repo: "/repo", maps });
+
+    expect(content).toContain("Project-local skills: `/repo/.agents/skills`");
+    expect(content).toContain("For project-local skills, reference the skill by directory name from `/repo/.agents/skills/<skill-name>/SKILL.md`.");
+  });
+
   it("removes only routes for the requested project", () => {
     const existing = {
       schemaVersion: 1 as const,

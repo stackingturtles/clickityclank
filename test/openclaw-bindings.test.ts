@@ -151,6 +151,29 @@ describe("openclaw bindings", () => {
     expect(cfg.channels.discord.accounts.backend.guilds.g1.channels["c-backend"]).toBeUndefined();
   });
 
+  it("ignores Hermes-only fields when generating OpenClaw bindings", () => {
+    const cfg: any = {
+      channels: { discord: { guilds: { g1: { channels: {} } }, accounts: { backend: { guilds: { g1: { channels: {} } } } } } },
+      bindings: []
+    };
+
+    upsertProjectBindings(
+      cfg,
+      "clickityclank",
+      "g1",
+      { backend: "c-backend" },
+      [{ channel: "backend", agentId: "backend", skills: ["backend", "typescript"], workdir: "/repo", contextFile: "/repo/AGENTS.md" }]
+    );
+
+    expect(cfg.bindings).toEqual([
+      {
+        agentId: "backend",
+        match: { channel: "discord", guildId: "g1", peer: { kind: "channel", id: "c-backend" }, accountId: "backend" }
+      }
+    ]);
+    expect(JSON.stringify(cfg)).not.toContain(".agents/skills");
+  });
+
   it("upsert is idempotent for existing project channels", () => {
     const cfg: any = {
       channels: { discord: { guilds: { g1: { channels: {} } }, accounts: { frontend: { guilds: { g1: { channels: {} } } } } } },

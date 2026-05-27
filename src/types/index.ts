@@ -40,6 +40,9 @@ export type HermesRoutesFile = {
 
 export type HermesConfigFragment = {
   group_sessions_per_user: boolean;
+  skills: {
+    external_dirs: string[];
+  };
   discord: {
     require_mention: boolean;
     free_response_channels: string[];
