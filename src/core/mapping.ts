@@ -73,12 +73,14 @@ export function validateMaps(maps: MapEntry[]): MapEntry[] {
 function validateModeReferences(manifest: ProjectManifest) {
   const modes: Record<string, boolean> = { fast: true, balanced: true, deep: true };
   for (const name of Object.keys(manifest.modes || {})) modes[name] = true;
+  const errors: string[] = [];
   if (manifest.defaults?.mode && !modes[manifest.defaults.mode]) {
-    throw new Error(`Unknown default Hermes mode: ${manifest.defaults.mode}`);
+    errors.push(`Unknown default Hermes mode: ${manifest.defaults.mode}`);
   }
   for (const map of manifest.maps) {
     if (map.mode && !modes[map.mode]) {
-      throw new Error(`Unknown Hermes mode "${map.mode}" for channel "${map.channel}"`);
+      errors.push(`Unknown Hermes mode "${map.mode}" for channel "${map.channel}"`);
     }
   }
+  if (errors.length) throw new Error(errors.join("; "));
 }
