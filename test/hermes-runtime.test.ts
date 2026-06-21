@@ -7,7 +7,8 @@ import {
   buildHermesConfigFragment,
   createProjectContext,
   removeProjectRoutes,
-  replaceProjectRoutes
+  replaceProjectRoutes,
+  resolveHermesRuntimePolicy
 } from "../src/core/hermes.js";
 import type { MapEntry } from "../src/types/index.js";
 
@@ -22,7 +23,50 @@ describe("Hermes runtime support", () => {
     expect(buildHermesRouteKey("guild-1", "111")).toBe("discord:guild-1:111");
   });
 
-  it("builds Hermes route entries with skills, workdir, context and session mode", () => {
+  it("resolves built-in balanced mode by default", () => {
+    expect(resolveHermesRuntimePolicy({ channel: "chat", agentId: "assistant" })).toEqual({
+      mode: "balanced",
+      runtime: {
+        priority: "normal",
+        reasoning: "low",
+        toolsets: ["file", "terminal", "skills", "memory", "session_search", "todo"]
+      }
+    });
+  });
+
+  it("resolves named modes, defaults, and map-level overrides", () => {
+    const modes = {
+      fast: { priority: "fast" as const, reasoning: "minimal" as const, model: { provider: "openrouter", default: "openai/gpt-4.1-mini" }, toolsets: ["skills", "memory"] },
+      deep: { priority: "normal" as const, reasoning: "high" as const, model: { provider: "openai-codex", default: "gpt-5.5" }, toolsets: ["file", "terminal", "web"] }
+    };
+
+    expect(resolveHermesRuntimePolicy({ channel: "chat", agentId: "assistant" }, { mode: "fast" }, modes)).toMatchObject({
+      mode: "fast",
+      runtime: { priority: "fast", reasoning: "minimal", model: { provider: "openrouter", default: "openai/gpt-4.1-mini" }, toolsets: ["skills", "memory"] }
+    });
+    expect(resolveHermesRuntimePolicy({ channel: "backend", agentId: "backend", mode: "deep", model: { provider: "anthropic" }, toolsets: ["file"] }, { mode: "fast" }, modes)).toMatchObject({
+      mode: "deep",
+      runtime: { priority: "normal", reasoning: "high", model: { provider: "anthropic", default: "gpt-5.5" }, toolsets: ["file"] }
+    });
+  });
+
+  it("extends built-in modes when a manifest redefines only selected fields", () => {
+    expect(resolveHermesRuntimePolicy(
+      { channel: "chat", agentId: "assistant", mode: "fast" },
+      undefined,
+      { fast: { model: { provider: "openrouter", default: "openai/gpt-4.1-mini" } } }
+    )).toEqual({
+      mode: "fast",
+      runtime: {
+        priority: "fast",
+        reasoning: "minimal",
+        model: { provider: "openrouter", default: "openai/gpt-4.1-mini" },
+        toolsets: ["skills", "memory", "session_search", "clarify"]
+      }
+    });
+  });
+
+  it("builds Hermes route entries with skills, workdir, context, session mode, and runtime policy", () => {
     const routes = buildHermesRoutes({
       project: "linearstories",
       guildId: "guild-1",
@@ -40,12 +84,18 @@ describe("Hermes runtime support", () => {
       skills: ["frontend"],
       workdir: "/Users/developer/code/linearstories",
       contextFile: "/Users/developer/code/linearstories/AGENTS.md",
-      sessionKeyMode: "channel"
+      sessionKeyMode: "channel",
+      mode: "balanced",
+      runtime: {
+        priority: "normal",
+        reasoning: "low",
+        toolsets: ["file", "terminal", "skills", "memory", "session_search", "todo"]
+      }
     });
     expect(routes.routes["discord:guild-1:222"].skills).toEqual(["backend", "typescript"]);
   });
 
-  it("generates a Hermes config fragment using supported Discord primitives", () => {
+  it("generates a Hermes config fragment using supported Discord primitives plus channel routes", () => {
     const routes = buildHermesRoutes({
       project: "linearstories",
       guildId: "guild-1",
@@ -70,11 +120,60 @@ describe("Hermes runtime support", () => {
       replied_user: false
     });
     expect(fragment.discord.channel_prompts["111"]).toContain("frontend expert");
+    expect(fragment.discord.channel_prompts["111"]).toContain("Hermes runtime mode: balanced");
     expect(fragment.discord.channel_prompts["111"]).toContain("/Users/developer/code/linearstories/AGENTS.md");
     expect(fragment.discord.channel_skill_bindings).toEqual([
       { id: "111", skills: ["frontend"] },
       { id: "222", skills: ["backend", "typescript"] }
     ]);
+    expect(fragment.channel_routes?.["discord:guild-1:111"]).toMatchObject({
+      project: "linearstories",
+      channel: "frontend",
+      profile: "linearstories-frontend",
+      workdir: "/Users/developer/code/linearstories",
+      context_file: "/Users/developer/code/linearstories/AGENTS.md",
+      skills: ["frontend"],
+      mode: "balanced",
+      runtime: { priority: "normal", reasoning: "low" }
+    });
+  });
+
+  it("emits fast route policy into routes and the config fragment", () => {
+    const routes = buildHermesRoutes({
+      project: "linearstories",
+      guildId: "guild-1",
+      channelIds: { chat: "333" },
+      maps: [{ channel: "chat", agentId: "assistant", mode: "fast" }],
+      repo: "/repo"
+    });
+
+    expect(routes.routes["discord:guild-1:333"]).toMatchObject({
+      mode: "fast",
+      runtime: { priority: "fast", reasoning: "minimal", toolsets: ["skills", "memory", "session_search", "clarify"] }
+    });
+    expect(buildHermesConfigFragment(routes).channel_routes?.["discord:guild-1:333"]).toMatchObject({
+      mode: "fast",
+      runtime: { priority: "fast", reasoning: "minimal", toolsets: ["skills", "memory", "session_search", "clarify"] }
+    });
+  });
+
+  it("sorts route keys and produces byte-identical generated output for unchanged input", () => {
+    const input = {
+      project: "linearstories",
+      guildId: "guild-1",
+      channelIds: { backend: "222", frontend: "111" },
+      maps: [
+        { channel: "backend", agentId: "backend" },
+        { channel: "frontend", agentId: "frontend" }
+      ],
+      repo: "/repo"
+    };
+    const first = buildHermesRoutes(input);
+    const second = buildHermesRoutes(input);
+
+    expect(Object.keys(first.routes)).toEqual(["discord:guild-1:111", "discord:guild-1:222"]);
+    expect(JSON.stringify(first, null, 2)).toBe(JSON.stringify(second, null, 2));
+    expect(JSON.stringify(buildHermesConfigFragment(first))).toBe(JSON.stringify(buildHermesConfigFragment(second)));
   });
 
   it("includes the project-local skill directory in the Hermes config fragment", () => {

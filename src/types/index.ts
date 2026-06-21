@@ -2,6 +2,30 @@ export type Json = string | number | boolean | null | Json[] | { [k: string]: Js
 
 export type RuntimeKind = "openclaw" | "hermes";
 
+export type HermesPriority = "normal" | "fast";
+export type HermesReasoning = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+export type HermesModelPolicy = {
+  provider?: string;
+  default?: string;
+};
+
+export type HermesRuntimePolicy = {
+  priority?: HermesPriority;
+  reasoning?: HermesReasoning;
+  model?: HermesModelPolicy;
+  toolsets?: string[];
+  maxTurns?: number;
+};
+
+export type HermesModeDefinition = HermesRuntimePolicy & {
+  description?: string;
+};
+
+export type HermesManifestDefaults = {
+  mode?: string;
+};
+
 export type MapEntry = {
   channel: string;
   agentId: string;
@@ -12,6 +36,14 @@ export type MapEntry = {
   skills?: string[];
   workdir?: string;
   contextFile?: string;
+
+  // Hermes runtime policy hints. These become effective only for Hermes projects.
+  mode?: string;
+  priority?: HermesPriority;
+  reasoning?: HermesReasoning;
+  model?: HermesModelPolicy;
+  toolsets?: string[];
+  maxTurns?: number;
 };
 
 export type ProjectManifest = {
@@ -19,6 +51,8 @@ export type ProjectManifest = {
   runtime?: RuntimeKind;
   repo?: string;
   contextFile?: string;
+  defaults?: HermesManifestDefaults;
+  modes?: Record<string, HermesModeDefinition>;
   maps: MapEntry[];
 };
 
@@ -31,6 +65,8 @@ export type HermesRoute = {
   workdir: string;
   contextFile: string;
   sessionKeyMode: "channel" | "user";
+  mode?: string;
+  runtime?: HermesRuntimePolicy;
 };
 
 export type HermesRoutesFile = {
@@ -43,6 +79,19 @@ export type HermesConfigFragment = {
   skills: {
     external_dirs: string[];
   };
+  channel_routes?: Record<
+    string,
+    {
+      project: string;
+      channel: string;
+      profile: string;
+      workdir: string;
+      context_file: string;
+      skills: string[];
+      mode?: string;
+      runtime?: HermesRuntimePolicy;
+    }
+  >;
   discord: {
     require_mention: boolean;
     free_response_channels: string[];

@@ -184,7 +184,9 @@ Hermes mode still provisions the Discord category/channels, but it does **not** 
 - routes source-of-truth: `~/.clickityclank/hermes/routes.json`;
 - reviewable Hermes config fragment: `~/.clickityclank/hermes/hermes-config.fragment.yaml`.
 
-The fragment uses existing Hermes Discord primitives: `discord.channel_prompts`, `discord.free_response_channels`, `discord.no_thread_channels`, and `gateway.platforms.discord.extra.channel_skill_bindings`. Merge it into `~/.hermes/config.yaml` after review, then restart Hermes gateway.
+The fragment uses existing Hermes Discord primitives: `discord.channel_prompts`, `discord.free_response_channels`, `discord.no_thread_channels`, and `discord.channel_skill_bindings`. It also emits `channel_routes` metadata for Hermes gateways that support pre-model-call runtime routing. Merge it into `~/.hermes/config.yaml` after review, then restart Hermes gateway.
+
+For per-channel speed/reasoning trade-offs, see [Hermes Channel Runtime Modes](./docs/hermes-channel-modes.md).
 
 ---
 
