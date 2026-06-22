@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>clickityclank — Project Spaces for OpenClaw Agents</title>
-  <meta name="description" content="Provision Discord-based project spaces for collections of OpenClaw agents. One command to deploy, scope, and wire your entire agent team.">
+  <title>clickityclank — Discord Agent Workspaces for OpenClaw and Hermes</title>
+  <meta name="description" content="Provision, route, verify, and repair Discord-based AI project workspaces for OpenClaw and Hermes agent teams.">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,8 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/motion@11.18.0/dist/motion.js" defer></script>
 
   <!-- Open Graph -->
-  <meta property="og:title" content="clickityclank — Project Spaces for OpenClaw Agents">
-  <meta property="og:description" content="One command to deploy project-scoped agent teams on Discord + OpenClaw.">
+  <meta property="og:title" content="clickityclank — Discord Agent Workspaces for OpenClaw and Hermes">
+  <meta property="og:description" content="Turn project manifests into working Discord-based agent workspaces, then keep them verifiable, repairable, and safely deployable.">
   <meta property="og:type" content="website">
 
   <style>
@@ -843,6 +843,103 @@
       line-height: var(--leading-relaxed);
     }
 
+
+    /* =========================================================
+       LIFECYCLE + STATUS
+       ========================================================= */
+    .lifecycle-grid, .runtime-grid, .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-6);
+    }
+
+    .lifecycle-grid { grid-template-columns: repeat(3, 1fr); }
+
+    .lifecycle-card, .runtime-card, .status-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      position: relative;
+      overflow: hidden;
+      transition: all var(--duration-slow) var(--ease-out);
+    }
+
+    .lifecycle-card:hover, .runtime-card:hover, .status-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-3px);
+    }
+
+    .lifecycle-card::before, .runtime-card::before, .status-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: rgba(45,212,191,0.28);
+    }
+
+    .lifecycle-card:nth-child(2)::before, .lifecycle-card:nth-child(5)::before,
+    .runtime-card:nth-child(2)::before, .status-card:nth-child(2)::before { background: rgba(251,191,36,0.28); }
+    .lifecycle-card:nth-child(3)::before, .lifecycle-card:nth-child(6)::before { background: rgba(116,143,252,0.28); }
+
+    .mini-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-medium);
+      border-radius: var(--radius-full);
+      padding: var(--space-1) var(--space-3);
+      margin-bottom: var(--space-4);
+      background: var(--accent-teal-bg);
+      color: var(--teal-400);
+      border: 1px solid var(--teal-800);
+    }
+
+    .mini-badge-amber { background: var(--accent-amber-bg); color: var(--amber-400); border-color: var(--amber-800); }
+    .mini-badge-blue { background: var(--accent-blue-bg); color: var(--slate-blue-400); border-color: var(--slate-blue-800); }
+
+    .card-copy-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-3);
+    }
+
+    .card-copy {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      line-height: var(--leading-relaxed);
+    }
+
+    .check-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+    }
+
+    .check-list li {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      padding-left: var(--space-6);
+      position: relative;
+      line-height: var(--leading-normal);
+    }
+
+    .check-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--teal-400);
+      font-family: var(--font-mono);
+    }
+
+    .status-card:nth-child(2) .check-list li::before { content: '•'; color: var(--amber-400); }
+
     /* =========================================================
        QUICK START
        ========================================================= */
@@ -1049,6 +1146,9 @@
     @media (max-width: 900px) {
       .problem-grid,
       .solution-grid,
+      .lifecycle-grid,
+      .runtime-grid,
+      .status-grid,
       .qs-grid { grid-template-columns: 1fr; gap: var(--space-10); }
       .steps { grid-template-columns: 1fr; gap: var(--space-6); }
       .steps::before { display: none; }
@@ -1077,10 +1177,10 @@
         clickityclank
       </a>
       <ul class="nav-links">
-        <li><a href="#problem">Problem</a></li>
-        <li><a href="#solution">Solution</a></li>
+        <li><a href="#solution">Workspace</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
-        <li><a href="#features">Features</a></li>
+        <li><a href="#features">Capabilities</a></li>
+        <li><a href="#safety">Safety</a></li>
         <li><a href="#quickstart">Quick Start</a></li>
       </ul>
       <div class="nav-actions">
@@ -1095,12 +1195,12 @@
   <!-- ==================== HERO ==================== -->
   <section class="hero">
     <div class="container">
-      <div class="hero-eyebrow" data-hero="fade" data-delay="0">Project Spaces for OpenClaw</div>
+      <div class="hero-eyebrow" data-hero="fade" data-delay="0">Discord-native project rooms for Hermes and OpenClaw</div>
       <h1 class="hero-title" data-hero="fade" data-delay="100">
-        Your Agents.<br>Your Projects.<br>One Command.
+        Your Project Team,<br>Running in Discord,<br>One Agent per Room.
       </h1>
       <p class="hero-sub" data-hero="fade" data-delay="200">
-        Stop wrestling with OpenClaw configuration. Provision project-scoped agent teams on Discord with a single CLI command.
+        ClickityClank creates agentic project rooms where every Discord channel has a job: frontend, backend, QA, ops, handoff, or whatever your project needs. Each room gets its own customisable Hermes or OpenClaw agent, wired with the right context, skills, and runtime policy.
       </p>
       <div class="hero-actions" data-hero="fade" data-delay="300">
         <a href="#quickstart" class="btn btn-primary btn-lg">Get Started</a>
@@ -1120,96 +1220,63 @@
     </div>
   </section>
 
-  <!-- ==================== PROBLEM ==================== -->
-  <section class="section problem" id="problem">
+  <!-- ==================== WORKSPACE MODEL ==================== -->
+  <section class="section problem" id="solution">
     <div class="container">
       <div class="problem-grid">
         <div class="reveal">
           <div class="section-header">
-            <span class="section-label section-label-amber">The Problem</span>
-            <h2 class="section-heading">The Single Agent Ceiling</h2>
+            <span class="section-label section-label-amber">Workspace lifecycle</span>
+            <h2 class="section-heading">Provision, route, verify, repair</h2>
           </div>
           <div class="problem-narrative">
-            <p>Your OpenClaw journey starts the same way everyone's does. <strong>One general-purpose agent.</strong> You build some skills, set up a daily briefing, maybe automate your email triage. It works. You're productive.</p>
-            <p>Then you want to build something real. A project with a frontend, a backend, infrastructure concerns. <strong>Suddenly, one agent trying to context-switch across everything becomes the bottleneck.</strong></p>
-            <p>What you actually want is a <strong>team of specialists</strong> you can talk to throughout the day &mdash; and the sleepless night &mdash; that know your project, remember its history weeks and months back, and don't need retraining when you pick things back up.</p>
-            <p>And if you're running multiple projects? Each advancing at different speeds, each needing its own skilled agents? <strong>The config file gymnastics to set that up in OpenClaw is enough to make you give up before you start.</strong></p>
+            <p><strong>ClickityClank is now a project workspace lifecycle tool for OpenClaw and Hermes-backed agent teams.</strong> It turns a manifest into a Discord category with specialist channels, then keeps the workspace inspectable and repairable.</p>
+            <p>A project can have channels like <code class="inline">#frontend</code>, <code class="inline">#backend</code>, <code class="inline">#qa</code>, <code class="inline">#ops</code>, or <code class="inline">#handoff</code>. Each channel maps to a role-specific agent and runtime policy.</p>
+            <p>The operating model is deliberately controlled: generate a plan, inspect JSON, apply only known managed keys, verify live state, and repair drift without surprise destructive actions.</p>
           </div>
         </div>
 
         <div class="problem-cards reveal">
-          <div class="pain-card reveal-child">
-            <span class="pain-card-num">1</span>
-            <div class="pain-card-content">
-              <h4>Context Collapse</h4>
-              <p>A single agent juggling frontend, backend, QA, and infra loses track of what matters. Project context leaks across concerns.</p>
-            </div>
-          </div>
-          <div class="pain-card reveal-child">
-            <span class="pain-card-num">2</span>
-            <div class="pain-card-content">
-              <h4>No Project Memory</h4>
-              <p>Start a conversation today, lose the thread tomorrow. Agents without dedicated sessions can't maintain long-running project awareness.</p>
-            </div>
-          </div>
-          <div class="pain-card reveal-child">
-            <span class="pain-card-num">3</span>
-            <div class="pain-card-content">
-              <h4>Multi-Project Chaos</h4>
-              <p>Different projects at different stages, each needing different agent configurations. Scaling means multiplying complexity.</p>
-            </div>
-          </div>
-          <div class="pain-card reveal-child">
-            <span class="pain-card-num">4</span>
-            <div class="pain-card-content">
-              <h4>Config File Hell</h4>
-              <p>Manually editing openclaw.json, wiring bindings, managing scopes, creating workspaces. Hours of plumbing before you write a line of code.</p>
-            </div>
-          </div>
+          <div class="pain-card reveal-child"><span class="pain-card-num">1</span><div class="pain-card-content"><h4>Describe</h4><p>Use flags or a YAML manifest to define project name, runtime, repo, and channel→agent mappings.</p></div></div>
+          <div class="pain-card reveal-child"><span class="pain-card-num">2</span><div class="pain-card-content"><h4>Plan</h4><p>Preview Discord channels, OpenClaw bindings, Hermes route changes, additions, removals, and field-level diffs before writing.</p></div></div>
+          <div class="pain-card reveal-child"><span class="pain-card-num">3</span><div class="pain-card-content"><h4>Apply</h4><p>Create the workspace, generate runtime artifacts, and safely merge Hermes config with backups and validation.</p></div></div>
+          <div class="pain-card reveal-child"><span class="pain-card-num">4</span><div class="pain-card-content"><h4>Keep healthy</h4><p>Verify channels, config, routes, context files, workdirs, bindings, and skills; generate explicit repair plans when drift appears.</p></div></div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ==================== SOLUTION ==================== -->
-  <section class="section solution" id="solution">
+  <section class="section solution">
     <div class="container">
       <div class="solution-grid">
         <div class="reveal">
           <div class="section-header">
-            <span class="section-label">The Solution</span>
-            <h2 class="section-heading">Project Spaces on Discord</h2>
+            <span class="section-label">Channel-native expert rooms</span>
+            <h2 class="section-heading">Discord is the workspace. The manifest is the source of truth.</h2>
           </div>
           <div class="solution-content">
-            <p>clickityclank creates <strong>project spaces</strong> &mdash; a collection of OpenClaw agents scoped to a project, each living in their own Discord channel with their own memory and session.</p>
-            <p>We use Discord because it has the perfect hierarchy built in: <strong>categories become projects, channels become agents.</strong> You talk to your frontend dev in <code class="inline">#frontend</code>, your QA engineer in <code class="inline">#qa</code>, your backend dev in <code class="inline">#backend</code>. Each one isolated, persistent, and purpose-built.</p>
-            <p>Set up your Discord bots <strong>once</strong> and reuse them across every project. clickityclank wires the bindings, configures the <code class="inline">AGENTS.md</code> and <code class="inline">SOUL.md</code> from your templates, and gives each agent their own workspace. Spinning up a new project takes seconds. Tearing one down is just as clean.</p>
+            <p>OpenClaw remains supported: ClickityClank creates Discord categories/channels, wires bindings and scopes, creates project-scoped agent IDs with shared role bot accounts, renders templates, and provisions per-channel workspaces.</p>
+            <p>Hermes support now goes beyond fragment generation: ClickityClank writes project context, channel prompts, skill bindings, free-response settings, no-thread settings, and can safely apply managed config into <code class="inline">~/.hermes/config.yaml</code>.</p>
+            <p>Per-channel Hermes modes let <code class="inline">#chat</code> stay lightweight, <code class="inline">#qa</code> stay balanced, and <code class="inline">#backend</code> or <code class="inline">#ops</code> carry the project context, skills, and policy they need for heavier work.</p>
           </div>
         </div>
 
         <div class="solution-visual reveal">
           <div class="discord-tree">
             <div class="discord-tree-header">Discord Server</div>
-
             <div class="discord-category">
-              <div class="discord-category-name"><span class="arrow">&#9660;</span> LINEARSTORIES</div>
+              <div class="discord-category-name"><span class="arrow">&#9660;</span> SNEAKERSCAN</div>
+              <div class="discord-channel"><span class="hash">#</span> chat <span class="agent-badge badge-teal">fast</span></div>
+              <div class="discord-channel"><span class="hash">#</span> frontend <span class="agent-badge badge-blue">deep</span></div>
+              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-amber">balanced</span></div>
+              <div class="discord-channel"><span class="hash">#</span> ops <span class="agent-badge badge-blue">deep</span></div>
+            </div>
+            <div class="discord-category">
+              <div class="discord-category-name"><span class="arrow">&#9660;</span> CLICKITYCLANK</div>
               <div class="discord-channel"><span class="hash">#</span> frontend <span class="agent-badge badge-teal">agent</span></div>
               <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-teal">agent</span></div>
               <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-teal">agent</span></div>
-              <div class="discord-channel"><span class="hash">#</span> infra <span class="agent-badge badge-teal">agent</span></div>
-            </div>
-
-            <div class="discord-category">
-              <div class="discord-category-name"><span class="arrow">&#9660;</span> SNEAKERSCAN</div>
-              <div class="discord-channel"><span class="hash">#</span> frontend <span class="agent-badge badge-amber">agent</span></div>
-              <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-amber">agent</span></div>
-              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-amber">agent</span></div>
-            </div>
-
-            <div class="discord-category">
-              <div class="discord-category-name"><span class="arrow">&#9660;</span> OMIKUJI</div>
-              <div class="discord-channel"><span class="hash">#</span> backend <span class="agent-badge badge-blue">agent</span></div>
-              <div class="discord-channel"><span class="hash">#</span> qa <span class="agent-badge badge-blue">agent</span></div>
             </div>
           </div>
         </div>
@@ -1222,26 +1289,13 @@
     <div class="container">
       <div class="section-header reveal" style="text-align:center">
         <span class="section-label section-label-blue">How It Works</span>
-        <h2 class="section-heading" style="margin-inline:auto">Three Steps. That's It.</h2>
-        <p class="section-sub" style="margin-inline:auto">Set up bots once, define your mappings, deploy.</p>
+        <h2 class="section-heading" style="margin-inline:auto">Manifest to workspace. Then keep it healthy.</h2>
+        <p class="section-sub" style="margin-inline:auto">A controlled lifecycle for agent workspaces, not a chat command that mutates infrastructure blindly.</p>
       </div>
-
       <div class="steps reveal">
-        <div class="step reveal-child">
-          <div class="step-num">1</div>
-          <h3 class="step-title">Create Discord Bots</h3>
-          <p class="step-desc">One bot per role: frontend, backend, QA. Create them once in the Discord Developer Portal and invite to your server.</p>
-        </div>
-        <div class="step reveal-child">
-          <div class="step-num">2</div>
-          <h3 class="step-title">Define Your Map</h3>
-          <p class="step-desc">Tell clickityclank which channels map to which agents. Inline flags or a YAML manifest &mdash; your choice.</p>
-        </div>
-        <div class="step reveal-child">
-          <div class="step-num">3</div>
-          <h3 class="step-title">Deploy</h3>
-          <p class="step-desc">One command creates the Discord category, channels, OpenClaw bindings, scopes, and agent workspaces. Done.</p>
-        </div>
+        <div class="step reveal-child"><div class="step-num">1</div><h3 class="step-title">Describe</h3><p class="step-desc">Create a manifest with runtime, repo, defaults, and channel/agent mappings.</p></div>
+        <div class="step reveal-child"><div class="step-num">2</div><h3 class="step-title">Plan &amp; apply</h3><p class="step-desc">Run create or sync with <code class="inline">--plan --dry-run --json</code>, then apply when the diff is right.</p></div>
+        <div class="step reveal-child"><div class="step-num">3</div><h3 class="step-title">Verify &amp; repair</h3><p class="step-desc">Check live Discord/runtime state and generate safe repair plans for drift.</p></div>
       </div>
     </div>
   </section>
@@ -1250,70 +1304,81 @@
   <section class="section features" id="features">
     <div class="container">
       <div class="section-header reveal" style="text-align:center">
-        <span class="section-label">Capabilities</span>
-        <h2 class="section-heading" style="margin-inline:auto">Built for Real Agent Workflows</h2>
-        <p class="section-sub" style="margin-inline:auto">Everything you need to manage project-scoped agent teams at scale.</p>
+        <span class="section-label">Current capabilities</span>
+        <h2 class="section-heading" style="margin-inline:auto">Built for operator-controlled automation</h2>
+        <p class="section-sub" style="margin-inline:auto">ClickityClank now covers the full workspace loop: setup, project creation, safe Hermes apply, manifest sync, verification, repair, and request-to-manifest conversion.</p>
       </div>
 
       <div class="feature-grid">
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-teal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-          </div>
-          <h3 class="feature-title">Single Command Deploy</h3>
-          <p class="feature-desc">Create Discord categories, text channels, and OpenClaw agent bindings in one atomic operation. No manual config editing.</p>
-        </div>
-
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-amber">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.93l4.24-4.24m4.24-4.24l4.24-4.24M1 12h6m6 0h6m-3.93 7.07l-4.24-4.24m-4.24-4.24L4.93 4.93"/></svg>
-          </div>
-          <h3 class="feature-title">Project-Scoped Agents</h3>
-          <p class="feature-desc">Each agent gets a project-prefixed ID while sharing the underlying bot account. Clean isolation across multiple projects.</p>
-        </div>
-
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-blue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          </div>
-          <h3 class="feature-title">Plan Before You Act</h3>
-          <p class="feature-desc">Preview every mutation with --plan and --dry-run. See exactly which channels, bindings, and workspaces will be created or destroyed.</p>
-        </div>
-
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-teal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-          </div>
-          <h3 class="feature-title">Drift Detection &amp; Sync</h3>
-          <p class="feature-desc">Detect when your running config diverges from declared state. Reconcile with a single sync command &mdash; idempotently.</p>
-        </div>
-
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-amber">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <h3 class="feature-title">Isolated Sessions</h3>
-          <p class="feature-desc">Every agent gets its own workspace, AGENTS.md, and SOUL.md. No context bleed between channels, projects, or agents.</p>
-        </div>
-
-        <div class="feature-card reveal" data-animate="feature">
-          <div class="feature-icon fi-blue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
-          </div>
-          <h3 class="feature-title">YAML Manifests</h3>
-          <p class="feature-desc">Define channel-to-agent mappings in version-controlled YAML files. Share configurations across teams and environments.</p>
-        </div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><h3 class="feature-title">Guided setup</h3><p class="feature-desc">Validate Discord tokens, guild access, permissions, local runtime availability, roles, and defaults before provisioning a workspace. Tokens stay in env/flags, not defaults files.</p></div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><h3 class="feature-title">Project rooms from manifests</h3><p class="feature-desc">Create Discord project categories and role channels from explicit channel→agent mappings for either OpenClaw or Hermes runtimes.</p></div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg></div><h3 class="feature-title">Per-channel Hermes modes</h3><p class="feature-desc">Use <code class="inline">fast</code>, <code class="inline">balanced</code>, or <code class="inline">deep</code> runtime policies per channel to tune speed, reasoning depth, model policy, and tool access.</p></div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h3 class="feature-title">Safe Hermes config deployment</h3><p class="feature-desc">Merge generated config into live Hermes with backups, validation, rollback, dry-run JSON, and route verification. Only ClickityClank-managed keys are touched.</p></div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div><h3 class="feature-title">Declarative workspace sync</h3><p class="feature-desc">Treat the manifest as desired state. Preview additions, removals, unchanged channels, and field-level route changes before applying.</p></div>
+        <div class="feature-card reveal" data-animate="feature"><div class="feature-icon fi-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4z"/></svg></div><h3 class="feature-title">Chat request to manifest</h3><p class="feature-desc">Convert structured Discord-originated workspace requests into validated ClickityClank manifests for review and dry-run planning.</p></div>
       </div>
     </div>
   </section>
 
+  <!-- ==================== LIFECYCLE ==================== -->
+  <section class="section how-it-works" id="safety">
+    <div class="container">
+      <div class="section-header reveal" style="text-align:center">
+        <span class="section-label section-label-amber">Safety and lifecycle</span>
+        <h2 class="section-heading" style="margin-inline:auto">Automation with brakes</h2>
+        <p class="section-sub" style="margin-inline:auto">ClickityClank is designed for operators who want automation without hidden side effects.</p>
+      </div>
+      <div class="lifecycle-grid reveal">
+        <div class="lifecycle-card reveal-child"><span class="mini-badge">setup</span><h3 class="card-copy-title">Guided setup</h3><p class="card-copy">Run <code class="inline">clickityclank setup</code> to check token presence/auth, guild access, permissions, runtime availability, selected runtime, roles, and defaults path.</p></div>
+        <div class="lifecycle-card reveal-child"><span class="mini-badge mini-badge-amber">apply</span><h3 class="card-copy-title">Safe Hermes apply</h3><p class="card-copy"><code class="inline">clickityclank hermes apply</code> backs up live config, merges managed paths only, runs <code class="inline">hermes config check</code>, rolls back on failure, and can verify expected route keys.</p></div>
+        <div class="lifecycle-card reveal-child"><span class="mini-badge mini-badge-blue">sync</span><h3 class="card-copy-title">Manifest reconciliation</h3><p class="card-copy">Sync compares current state to desired manifest state with additions, removals, retained, changed, and unchanged buckets plus field-level route diffs.</p></div>
+        <div class="lifecycle-card reveal-child"><span class="mini-badge">verify</span><h3 class="card-copy-title">Workspace health</h3><p class="card-copy">Verify checks Discord channels, category relationships, routes, fragments, live Hermes config, bindings, context files, repos, workspaces, and skills.</p></div>
+        <div class="lifecycle-card reveal-child"><span class="mini-badge mini-badge-amber">repair</span><h3 class="card-copy-title">Safe repair plans</h3><p class="card-copy">Repair distinguishes applied and skipped repairs. It does not silently delete channels, overwrite context files, or restart gateways.</p></div>
+        <div class="lifecycle-card reveal-child"><span class="mini-badge mini-badge-blue">request</span><h3 class="card-copy-title">Discord-originated requests</h3><p class="card-copy">Structured chat requests can become manifests, but mutation still flows through validation, dry-run planning, and explicit apply.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== STATUS ==================== -->
+  <section class="section how-it-works" id="status">
+    <div class="container">
+      <div class="section-header reveal" style="text-align:center">
+        <span class="section-label">Operator control</span>
+        <h2 class="section-heading" style="margin-inline:auto">Automation you can trust</h2>
+        <p class="section-sub" style="margin-inline:auto">ClickityClank keeps infrastructure changes explicit: Discord can initiate a request, but manifests, dry-runs, config checks, and deliberate apply steps keep operators in control.</p>
+      </div>
+      <div class="status-grid reveal">
+        <div class="status-card reveal-child">
+          <span class="mini-badge">Can do now</span>
+          <h3 class="card-copy-title">Live workspace lifecycle</h3>
+          <ul class="check-list">
+            <li>Create project Discord categories/channels.</li>
+            <li>Generate and repair OpenClaw bindings/workspaces.</li>
+            <li>Generate, apply, verify, and roll back Hermes config fragments.</li>
+            <li>Plan/dry-run major operations with JSON output.</li>
+            <li>Sync manifests, verify health, generate repair plans, and convert structured requests into manifests.</li>
+          </ul>
+        </div>
+        <div class="status-card reveal-child">
+          <span class="mini-badge mini-badge-amber">Guardrails</span>
+          <h3 class="card-copy-title">Deliberate by default</h3>
+          <ul class="check-list">
+            <li>Discord-originated project creation is request-to-manifest, not a full slash-command mutation flow.</li>
+            <li>Per-channel modes are expressed through managed Hermes config and project context; operators still review and apply those changes deliberately.</li>
+            <li>Repair is conservative: no silent deletion, overwrites, or gateway restarts.</li>
+            <li>Some Discord permission checks depend on exposed API/bot permissions.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
   <!-- ==================== QUICK START ==================== -->
   <section class="section quickstart" id="quickstart">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">Get Started</span>
-        <h2 class="section-heading">Up and Running in Minutes</h2>
-        <p class="section-sub">Four commands from zero to a fully-wired project. See the full <a href="https://github.com/stackingturtles/clickityclank/blob/main/GETTING-STARTED.md" target="_blank" rel="noopener" style="color:var(--teal-400)">Getting Started guide</a> for detailed setup instructions.</p>
+        <h2 class="section-heading">Start with a plan. Apply deliberately.</h2>
+        <p class="section-sub">Create a manifest, preview the workspace, apply runtime config safely, then verify and repair drift as the project evolves.</p>
       </div>
 
       <div class="qs-grid">
@@ -1321,29 +1386,29 @@
           <div class="qs-step reveal-child">
             <span class="qs-step-num">1</span>
             <div class="qs-step-content">
-              <h4>Install &amp; initialize</h4>
-              <p>Install clickityclank globally and seed your role templates. This creates the template directory with starter AGENTS.md and SOUL.md files for each role.</p>
+              <h4>Run guided setup</h4>
+              <p>Check Discord token presence/auth, guild access, permissions, runtime availability, roles, and defaults path before provisioning.</p>
             </div>
           </div>
           <div class="qs-step reveal-child">
             <span class="qs-step-num">2</span>
             <div class="qs-step-content">
-              <h4>Validate your environment</h4>
-              <p>Run doctor to check your Discord token, OpenClaw config, and runtime bot accounts are all wired correctly before creating anything.</p>
+              <h4>Describe the workspace</h4>
+              <p>Use a manifest or explicit maps to define runtime, repo, defaults, and channel-specific agent routing.</p>
             </div>
           </div>
           <div class="qs-step reveal-child">
             <span class="qs-step-num">3</span>
             <div class="qs-step-content">
-              <h4>Plan your project</h4>
-              <p>Preview the full execution plan with --plan --dry-run. See every Discord channel, OpenClaw binding, and workspace that will be created.</p>
+              <h4>Apply and verify</h4>
+              <p>Create the workspace, safely apply Hermes config where needed, then verify Discord/runtime state with structured findings.</p>
             </div>
           </div>
           <div class="qs-step reveal-child">
             <span class="qs-step-num">4</span>
             <div class="qs-step-content">
-              <h4>Deploy for real</h4>
-              <p>Drop the --dry-run flag and your project space is live. Discord channels created, agents wired, workspaces provisioned. Start talking to your team.</p>
+              <h4>Sync and repair drift</h4>
+              <p>Treat manifests as desired state. Preview additions/removals and generate safe repair plans when live state drifts.</p>
             </div>
           </div>
         </div>
@@ -1355,36 +1420,35 @@
               <span class="code-block-title">terminal</span>
             </div>
             <div class="code-block-body">
-<code><span class="t-cmt"># 1. Install and initialize templates</span>
-<span class="t-cmd">npm</span> install -g clickityclank
-<span class="t-cmd">clickityclank</span> init <span class="t-flag">--roles</span> <span class="t-val">frontend,backend,qa</span>
-
-<span class="t-cmt"># 2. Validate environment</span>
-<span class="t-cmd">clickityclank</span> doctor
-<span class="t-ok">  discord-auth    pass</span>
-<span class="t-ok">  openclaw-config pass</span>
-<span class="t-ok">  runtime-bots    pass</span>
-
-<span class="t-cmt"># 3. Plan (no mutations)</span>
-<span class="t-cmd">clickityclank</span> project create myapp \
+<code><span class="t-cmt"># 1. Guided setup, no writes</span>
+<span class="t-cmd">clickityclank</span> setup \
   <span class="t-flag">--guild-id</span> <span class="t-val">$DISCORD_GUILD_ID</span> \
-  <span class="t-flag">--map</span> <span class="t-val">frontend:frontend</span> \
-  <span class="t-flag">--map</span> <span class="t-val">backend:backend</span> \
-  <span class="t-flag">--map</span> <span class="t-val">qa:qa</span> \
-  <span class="t-flag">--project-scoped-agents</span> \
-  <span class="t-flag">--plan</span> <span class="t-flag">--dry-run</span>
+  <span class="t-flag">--runtime</span> <span class="t-val">hermes</span> \
+  <span class="t-flag">--roles</span> <span class="t-val">frontend,backend,qa</span> \
+  <span class="t-flag">--dry-run</span> <span class="t-flag">--json</span>
 
-<span class="t-cmt"># 4. Deploy for real</span>
-<span class="t-cmd">clickityclank</span> project create myapp \
+<span class="t-cmt"># 2. Create from manifest, preview first</span>
+<span class="t-cmd">clickityclank</span> project create sneakerscan \
   <span class="t-flag">--guild-id</span> <span class="t-val">$DISCORD_GUILD_ID</span> \
-  <span class="t-flag">--map</span> <span class="t-val">frontend:frontend</span> \
-  <span class="t-flag">--map</span> <span class="t-val">backend:backend</span> \
-  <span class="t-flag">--map</span> <span class="t-val">qa:qa</span> \
-  <span class="t-flag">--project-scoped-agents</span>
-<span class="t-ok">  Category created: MYAPP</span>
-<span class="t-ok">  Channel #frontend bound to myapp-frontend</span>
-<span class="t-ok">  Channel #backend  bound to myapp-backend</span>
-<span class="t-ok">  Channel #qa       bound to myapp-qa</span></code>
+  <span class="t-flag">--maps-file</span> <span class="t-val">sneakerscan.yaml</span> \
+  <span class="t-flag">--plan</span> <span class="t-flag">--dry-run</span> <span class="t-flag">--json</span>
+
+<span class="t-cmt"># 3. Apply Hermes config safely</span>
+<span class="t-cmd">clickityclank</span> hermes apply sneakerscan \
+  <span class="t-flag">--dry-run</span> <span class="t-flag">--json</span>
+<span class="t-cmd">clickityclank</span> hermes apply sneakerscan \
+  <span class="t-flag">--verify</span> <span class="t-flag">--json</span>
+
+<span class="t-cmt"># 4. Keep it healthy</span>
+<span class="t-cmd">clickityclank</span> project verify sneakerscan <span class="t-flag">--json</span>
+<span class="t-cmd">clickityclank</span> project repair sneakerscan \
+  <span class="t-flag">--plan</span> <span class="t-flag">--dry-run</span> <span class="t-flag">--json</span>
+
+<span class="t-cmt"># Optional: request to manifest</span>
+<span class="t-cmd">clickityclank</span> project manifest from-request \
+  <span class="t-flag">--request-file</span> <span class="t-val">request.yaml</span> \
+  <span class="t-flag">--output</span> <span class="t-val">manifest.yaml</span> \
+  <span class="t-flag">--json</span></code>
             </div>
           </div>
         </div>
@@ -1398,7 +1462,7 @@
       <div class="footer-inner">
         <div>
           <div class="footer-brand-name">clickityclank</div>
-          <div class="footer-brand-tagline">Project spaces for OpenClaw agents</div>
+          <div class="footer-brand-tagline">Discord workspaces for OpenClaw and Hermes agent teams</div>
         </div>
         <div class="footer-links">
           <a href="https://x.com" class="footer-link" target="_blank" rel="noopener">
@@ -1416,7 +1480,7 @@
         </div>
       </div>
       <div class="footer-copy">
-        2026 clickityclank. Built for agentic developers on OpenClaw.
+        2026 clickityclank. Built for operator-controlled OpenClaw and Hermes agent workspaces.
       </div>
     </div>
   </footer>
