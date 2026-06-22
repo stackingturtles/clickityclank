@@ -3,6 +3,8 @@ import { Command } from "commander";
 import { runInit } from "./commands/init.js";
 import { runDoctor } from "./commands/doctor.js";
 import { registerProject } from "./commands/project.js";
+import { registerHermes } from "./commands/hermes.js";
+import { registerSetup } from "./commands/setup.js";
 
 const program = new Command();
 program.name("clickityclank").description("Discord/OpenClaw project routing CLI").version("0.2.2");
@@ -24,6 +26,8 @@ program
   });
 
 registerProject(program);
+registerHermes(program);
+registerSetup(program);
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(`ERROR ${err.message}`);

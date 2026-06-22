@@ -158,7 +158,12 @@ clickityclank project create linearstories \
 - `clickityclank doctor [--json] [--discord-token <token>]`
 - `clickityclank project create <name> --guild-id <id> (--map <channel:agentId>... | --maps-file <file>) [--runtime openclaw|hermes] [--repo <path>] [--context-file <path>] [--create-missing-agents] [--project-scoped-agents] [--overwrite-templates] [--plan] [--dry-run] [--json]`
 - `clickityclank project delete <name> --yes [--plan] [--dry-run] [--json]`
-- `clickityclank project sync <name> [--create-missing-agents] [--plan] [--dry-run] [--json]`
+- `clickityclank setup [--guild-id <id>] [--runtime openclaw|hermes] [--roles <csv>] [--repo-root <path>] [--dry-run] [--json]`
+- `clickityclank hermes apply <name> [--dry-run] [--verify] [--restart] [--json]`
+- `clickityclank project sync <name> [--maps-file <file>] [--create-missing-agents] [--delete-removed-channels] [--allow-rename] [--plan] [--dry-run] [--json]`
+- `clickityclank project verify <name> [--json]`
+- `clickityclank project repair <name> [--plan] [--dry-run] [--json]`
+- `clickityclank project manifest from-request --request-file <file> [--output <file>] [--json]`
 - `clickityclank project list [--json]`
 - `clickityclank project show <name> [--json]`
 
@@ -187,6 +192,15 @@ Hermes mode still provisions the Discord category/channels, but it does **not** 
 The fragment uses existing Hermes Discord primitives: `discord.channel_prompts`, `discord.free_response_channels`, `discord.no_thread_channels`, and `discord.channel_skill_bindings`. It also emits `channel_routes` metadata for Hermes gateways that support pre-model-call runtime routing. Merge it into `~/.hermes/config.yaml` after review, then restart Hermes gateway.
 
 For per-channel speed/reasoning trade-offs, see [Hermes Channel Runtime Modes](./docs/hermes-channel-modes.md).
+
+To apply a generated Hermes fragment to live Hermes config after review:
+
+```bash
+clickityclank hermes apply linearstories --dry-run --json
+clickityclank hermes apply linearstories --verify --json
+```
+
+The apply command backs up `~/.hermes/config.yaml`, merges only ClickityClank-managed Discord/Hermes route keys, runs `hermes config check`, and restores the backup if validation fails. Use `--restart` to receive safe restart instructions; the command does not blindly restart an active gateway process.
 
 ---
 

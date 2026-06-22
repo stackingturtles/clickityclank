@@ -9,6 +9,8 @@ export const CLICKITYCLANK_PROJECTS = path.join(os.homedir(), ".clickityclank", 
 export const CLICKITYCLANK_HERMES_DIR = path.join(os.homedir(), ".clickityclank", "hermes");
 export const CLICKITYCLANK_HERMES_ROUTES = path.join(CLICKITYCLANK_HERMES_DIR, "routes.json");
 export const CLICKITYCLANK_HERMES_CONFIG_FRAGMENT = path.join(CLICKITYCLANK_HERMES_DIR, "hermes-config.fragment.yaml");
+export const CLICKITYCLANK_DEFAULTS = path.join(os.homedir(), ".clickityclank", "defaults.yaml");
+export const HERMES_CONFIG = path.join(os.homedir(), ".hermes", "config.yaml");
 
 export const workspacePathFor = (project: string, channel?: string) =>
   path.join(os.homedir(), ".openclaw", channel ? `workspace-${project}-${channel}` : `workspace-${project}`);
