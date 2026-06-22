@@ -17,6 +17,9 @@ import {
 import { createCategory, createTextChannel, deleteChannel, listGuildChannels } from "../core/discord.js";
 import { CLICKITYCLANK_HERMES_CONFIG_FRAGMENT, CLICKITYCLANK_HERMES_ROUTES, workspacePathFor } from "../core/paths.js";
 import { applyTemplates } from "../core/templates.js";
+import { reconcileMaps, detectAmbiguousRenames } from "../core/reconcile.js";
+import { verifyProject } from "../core/verify.js";
+import { writeYamlAtomic } from "../core/config.js";
 import {
   buildHermesRoutes,
   ensureProjectContext,
@@ -299,6 +302,8 @@ export function registerProject(program: Command) {
     .option("--context-file <path>", "Project AGENTS.md/context file for Hermes")
     .option("--discord-token <token>")
     .option("--create-missing-agents")
+    .option("--delete-removed-channels")
+    .option("--allow-rename")
     .option("--dry-run")
     .option("--plan")
     .option("--json")
@@ -433,6 +438,61 @@ export function registerProject(program: Command) {
       }
 
       const runtime = p.runtime || "openclaw";
+
+      if (opts.mapsFile || (opts.map && opts.map.length)) {
+        const { maps: desiredMaps, runtimeFromFile, repoFromFile, contextFileFromFile, defaultsFromFile, modesFromFile } = await resolveMaps(opts);
+        const requestedRuntime = opts.runtime || runtimeFromFile;
+        if (requestedRuntime && requestedRuntime !== runtime) throw new Error(`Project ${name} is tracked as runtime ${runtime}; refusing conflicting --runtime ${requestedRuntime}`);
+        const diff = reconcileMaps(p.maps || [], desiredMaps);
+        const ambiguous = detectAmbiguousRenames(diff);
+        if (ambiguous.length && !opts.allowRename) throw new Error(`Ambiguous channel rename for agent(s): ${ambiguous.join(", ")}. Pass --allow-rename or use explicit migration flags.`);
+        const result = { ok: true, project: name, runtime, additions: diff.additions, removals: diff.removals, retained: diff.retained, changed: diff.changed, unchanged: diff.unchanged, orphaned: diff.removals.map((m) => ({ channel: m.channel, channelId: p.channelIds[m.channel] })) };
+        if (opts.plan || opts.dryRun) {
+          if (opts.json) return printJson(result);
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+        const token = getToken(opts);
+        if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
+        const guildChannels = await listGuildChannels(token, p.guildId);
+        let category = guildChannels.find((c) => c.type === 4 && c.id === p.categoryId);
+        if (!category) category = await createCategory(token, p.guildId, name);
+        const updatedChannelIds: Record<string, string> = { ...p.channelIds };
+        for (const m of diff.additions) {
+          const existing = guildChannels.find((c) => c.type === 0 && c.parent_id === category?.id && c.name === m.channel);
+          const ch = existing ?? (await createTextChannel(token, p.guildId, category.id, m.channel));
+          updatedChannelIds[m.channel] = ch.id;
+        }
+        if (opts.deleteRemovedChannels) {
+          for (const m of diff.removals) {
+            const cid = updatedChannelIds[m.channel];
+            if (cid) await deleteChannel(token, cid).catch(() => undefined);
+            delete updatedChannelIds[m.channel];
+          }
+        } else {
+          for (const m of diff.removals) delete updatedChannelIds[m.channel];
+        }
+        p.maps = desiredMaps;
+        p.channelIds = updatedChannelIds;
+        if (repoFromFile) p.repo = repoFromFile;
+        if (contextFileFromFile) p.contextFile = contextFileFromFile;
+        if (runtime === "openclaw") {
+          const cfg = await loadOpenClawConfig();
+          ensureAgents(cfg, p.maps, name, !!opts.createMissingAgents);
+          const backup = await backupOpenClawConfig();
+          try { upsertProjectBindings(cfg, name, p.guildId, updatedChannelIds, p.maps); await saveOpenClawConfig(cfg); }
+          catch (e) { await restoreOpenClawBackup(backup); throw e; }
+        } else {
+          const nextRoutes = buildHermesRoutes({ project: name, guildId: p.guildId, channelIds: updatedChannelIds, maps: p.maps, repo: p.repo, contextFile: p.contextFile, defaults: defaultsFromFile, modes: modesFromFile });
+          await upsertProjectHermesRoutes(name, nextRoutes);
+        }
+        p.updatedAt = new Date().toISOString();
+        await saveState(state);
+        if (opts.json) return printJson({ ...result, channelIds: updatedChannelIds });
+        console.log(JSON.stringify({ ...result, channelIds: updatedChannelIds }, null, 2));
+        return;
+      }
+
       let cfg: any | undefined;
       if (runtime === "openclaw") {
         cfg = await loadOpenClawConfig();
@@ -552,6 +612,86 @@ export function registerProject(program: Command) {
         console.log(`${name}: synced (${actions.length} action(s))`);
         for (const a of actions) console.log(`  - ${a}`);
       }
+    });
+
+  project
+    .command("verify <name>")
+    .option("--discord-token <token>")
+    .option("--json")
+    .action(async (name, opts) => {
+      const state = await loadState();
+      const p = state.projects[name];
+      if (!p) throw new Error(`Project not found in state: ${name}`);
+      let discordChannels: any[] | undefined;
+      const token = getToken(opts);
+      if (token) discordChannels = await listGuildChannels(token, p.guildId).catch(() => undefined);
+      const result = await verifyProject(name, state, { discordChannels });
+      if (opts.json) printJson(result);
+      else console.log(JSON.stringify(result, null, 2));
+      if (!result.ok) process.exitCode = 1;
+    });
+
+  project
+    .command("repair <name>")
+    .option("--discord-token <token>")
+    .option("--plan")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (name, opts) => {
+      const state = await loadState();
+      const p = state.projects[name];
+      if (!p) throw new Error(`Project not found in state: ${name}`);
+      const token = getToken(opts);
+      const discordChannels = token ? await listGuildChannels(token, p.guildId).catch(() => undefined) : undefined;
+      const verification = await verifyProject(name, state, { discordChannels });
+      const repairs = verification.findings.filter((f) => f.repair).map((f) => ({ name: f.name, action: f.repair, status: f.status }));
+      const safeRuntimeRepairs = repairs.filter((r) =>
+        ["refresh Hermes fragments", "reapply bindings"].includes(String(r.action))
+      );
+      if (opts.plan || opts.dryRun) {
+        const out = { ok: true, project: name, repairs, verification };
+        if (opts.json) return printJson(out);
+        console.log(JSON.stringify(out, null, 2));
+        return;
+      }
+      if (!token && verification.findings.some((f) => f.name.startsWith("discord."))) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
+      if ((p.runtime || "openclaw") === "hermes") {
+        const nextRoutes = buildHermesRoutes({ project: name, guildId: p.guildId, channelIds: p.channelIds, maps: p.maps, repo: p.repo, contextFile: p.contextFile });
+        await upsertProjectHermesRoutes(name, nextRoutes);
+      } else {
+        const cfg = await loadOpenClawConfig();
+        const backup = await backupOpenClawConfig();
+        try { upsertProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps); await saveOpenClawConfig(cfg); }
+        catch (e) { await restoreOpenClawBackup(backup); throw e; }
+      }
+      const out = { ok: true, project: name, repairsApplied: safeRuntimeRepairs, repairsSkipped: repairs.filter((r) => !safeRuntimeRepairs.includes(r)) };
+      if (opts.json) return printJson(out);
+      console.log(JSON.stringify(out, null, 2));
+    });
+
+  const manifest = project.command("manifest").description("Manifest helper operations");
+  manifest
+    .command("from-request")
+    .requiredOption("--request-file <path>")
+    .option("--output <path>")
+    .option("--json")
+    .action(async (opts) => {
+      const req = await readManifest(opts.requestFile) as any;
+      const missingFields = ["project", "guildId", "runtime"].filter((f) => !req[f]);
+      if (!Array.isArray(req.maps) || req.maps.length === 0) missingFields.push("maps");
+      if (req.runtime && req.runtime !== "openclaw" && req.runtime !== "hermes") throw new Error(`Unsupported runtime: ${req.runtime}`);
+      if (missingFields.length) {
+        const out = { ok: false, missingFields };
+        if (opts.json) { printJson(out); process.exitCode = 1; return; }
+        throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+      }
+      const manifestOut: any = { project: req.project, runtime: req.runtime, maps: req.maps };
+      for (const k of ["repo", "contextFile", "defaults", "modes"]) if (req[k]) manifestOut[k] = req[k];
+      if (opts.output) await writeYamlAtomic(opts.output, manifestOut);
+      const followUp = `clickityclank project create ${req.project} --guild-id ${req.guildId} --maps-file ${opts.output || "<manifest>"} --plan --dry-run --json`;
+      const out = { ok: true, manifest: manifestOut, output: opts.output, followUp };
+      if (opts.json) return printJson(out);
+      console.log(JSON.stringify(out, null, 2));
     });
 
   project.command("list").option("--json").action(async (opts) => {
