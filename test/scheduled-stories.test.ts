@@ -13,8 +13,8 @@ import type { GlobalState, HermesConfigFragment } from "../src/types/index.js";
 const execFileAsync = promisify(execFile);
 const cli = path.join(process.cwd(), "node_modules", ".bin", "tsx");
 async function tempHome() { return fs.mkdtemp(path.join(os.tmpdir(), "clickityclank-stories-")); }
-async function runCli(args: string[], home: string) {
-  return execFileAsync(cli, ["src/index.ts", ...args], { env: { ...process.env, HOME: home, CLICKITYCLANK_DISCORD_TOKEN: "token" } });
+async function runCli(args: string[], home: string, env: Record<string, string> = {}) {
+  return execFileAsync(cli, ["src/index.ts", ...args], { env: { ...process.env, HOME: home, CLICKITYCLANK_DISCORD_TOKEN: "token", ...env } });
 }
 
 describe("scheduled Linear story delivery support", () => {
@@ -87,7 +87,11 @@ describe("scheduled Linear story delivery support", () => {
 
   it("STA-464 setup dry-run emits deterministic JSON and does not persist secrets", async () => {
     const home = await tempHome();
-    const { stdout } = await runCli(["setup", "--guild-id", "guild", "--runtime", "hermes", "--roles", "frontend,backend,qa", "--dry-run", "--json"], home);
+    const bin = path.join(home, "bin");
+    await fs.mkdir(bin, { recursive: true });
+    await fs.writeFile(path.join(bin, "hermes"), "#!/bin/sh\nexit 0\n");
+    await fs.chmod(path.join(bin, "hermes"), 0o755);
+    const { stdout } = await runCli(["setup", "--guild-id", "guild", "--runtime", "hermes", "--roles", "frontend,backend,qa", "--dry-run", "--json"], home, { PATH: `${bin}:${process.env.PATH}` });
     const out = JSON.parse(stdout);
     expect(out).toMatchObject({ defaultsPath: path.join(home, ".clickityclank", "defaults.yaml"), runtime: "hermes", roles: ["frontend", "backend", "qa"], dryRun: true });
     expect(await fs.access(out.defaultsPath).then(() => true).catch(() => false)).toBe(false);

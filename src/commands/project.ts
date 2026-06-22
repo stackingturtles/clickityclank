@@ -440,8 +440,6 @@ export function registerProject(program: Command) {
       const runtime = p.runtime || "openclaw";
 
       if (opts.mapsFile || (opts.map && opts.map.length)) {
-        const token = getToken(opts);
-        if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
         const { maps: desiredMaps, runtimeFromFile, repoFromFile, contextFileFromFile, defaultsFromFile, modesFromFile } = await resolveMaps(opts);
         const requestedRuntime = opts.runtime || runtimeFromFile;
         if (requestedRuntime && requestedRuntime !== runtime) throw new Error(`Project ${name} is tracked as runtime ${runtime}; refusing conflicting --runtime ${requestedRuntime}`);
@@ -454,6 +452,8 @@ export function registerProject(program: Command) {
           console.log(JSON.stringify(result, null, 2));
           return;
         }
+        const token = getToken(opts);
+        if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
         const guildChannels = await listGuildChannels(token, p.guildId);
         let category = guildChannels.find((c) => c.type === 4 && c.id === p.categoryId);
         if (!category) category = await createCategory(token, p.guildId, name);
@@ -645,6 +645,9 @@ export function registerProject(program: Command) {
       const discordChannels = token ? await listGuildChannels(token, p.guildId).catch(() => undefined) : undefined;
       const verification = await verifyProject(name, state, { discordChannels });
       const repairs = verification.findings.filter((f) => f.repair).map((f) => ({ name: f.name, action: f.repair, status: f.status }));
+      const safeRuntimeRepairs = repairs.filter((r) =>
+        ["refresh Hermes fragments", "reapply bindings"].includes(String(r.action))
+      );
       if (opts.plan || opts.dryRun) {
         const out = { ok: true, project: name, repairs, verification };
         if (opts.json) return printJson(out);
@@ -661,7 +664,7 @@ export function registerProject(program: Command) {
         try { upsertProjectBindings(cfg, name, p.guildId, p.channelIds, p.maps); await saveOpenClawConfig(cfg); }
         catch (e) { await restoreOpenClawBackup(backup); throw e; }
       }
-      const out = { ok: true, project: name, repairsApplied: repairs };
+      const out = { ok: true, project: name, repairsApplied: safeRuntimeRepairs, repairsSkipped: repairs.filter((r) => !safeRuntimeRepairs.includes(r)) };
       if (opts.json) return printJson(out);
       console.log(JSON.stringify(out, null, 2));
     });
