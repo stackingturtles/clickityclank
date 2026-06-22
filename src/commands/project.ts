@@ -21,9 +21,10 @@ import {
   buildHermesRoutes,
   ensureProjectContext,
   removeProjectHermesRoutes,
+  resolveHermesRuntimePolicy,
   upsertProjectHermesRoutes
 } from "../core/hermes.js";
-import type { MapEntry, RuntimeKind } from "../types/index.js";
+import type { HermesManifestDefaults, HermesModeDefinition, MapEntry, RuntimeKind } from "../types/index.js";
 
 function getToken(cmd: any) {
   return cmd.discordToken || process.env.CLICKITYCLANK_DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
@@ -37,12 +38,20 @@ async function resolveMaps(opts: { map?: string[]; mapsFile?: string }) {
       runtimeFromFile: manifest.runtime,
       repoFromFile: manifest.repo,
       contextFileFromFile: manifest.contextFile,
+      defaultsFromFile: manifest.defaults,
+      modesFromFile: manifest.modes,
       maps: validateMaps(manifest.maps)
     };
   }
   const mapFlags = Array.isArray(opts.map) ? opts.map : opts.map ? [opts.map] : [];
   if (!mapFlags.length) throw new Error("Explicit mappings are required. Use --map channel:agentId (repeatable) or --maps-file.");
   return { maps: parseMapFlags(mapFlags) };
+}
+
+function hermesPlanRoute(project: string, map: MapEntry, defaults?: HermesManifestDefaults, modes?: Record<string, HermesModeDefinition>) {
+  const { mode, runtime } = resolveHermesRuntimePolicy(map, defaults, modes);
+  const model = runtime.model?.default ? ` model:${runtime.model.default}` : "";
+  return `route:${project}/${map.channel}->${map.profile || `${project}-${map.agentId}`} mode:${mode}${model}`;
 }
 
 function resolveRuntime(opts: any, runtimeFromFile?: RuntimeKind): RuntimeKind {
@@ -90,10 +99,12 @@ export function registerProject(program: Command) {
       const token = getToken(opts);
       if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
 
-      const { maps: inputMaps, runtimeFromFile, repoFromFile, contextFileFromFile } = await resolveMaps(opts);
+      const { maps: inputMaps, runtimeFromFile, repoFromFile, contextFileFromFile, defaultsFromFile, modesFromFile } = await resolveMaps(opts);
       const runtime = resolveRuntime(opts, runtimeFromFile);
       const repo = opts.repo || repoFromFile;
       const contextFile = opts.contextFile || contextFileFromFile;
+      const defaults = defaultsFromFile;
+      const modes = modesFromFile;
       const maps = opts.projectScopedAgents ? applyProjectScopedAgents(name, inputMaps) : inputMaps;
 
       let cfg: any | undefined;
@@ -111,7 +122,7 @@ export function registerProject(program: Command) {
           plan.openclaw.patch.push(`binding:${name}/${m.channel}->${m.agentId}`);
           plan.openclaw.patch.push(`scope:global+account channel ${m.channel}`);
         } else {
-          plan.hermes.patch.push(`route:${name}/${m.channel}->${m.profile || `${name}-${m.agentId}`}`);
+          plan.hermes.patch.push(hermesPlanRoute(name, m, defaults, modes));
         }
       }
       if (runtime === "hermes") {
@@ -170,7 +181,7 @@ export function registerProject(program: Command) {
         const projectContext = await ensureProjectContext({ project: name, repo, maps, contextFile, overwrite: !!opts.overwriteTemplates });
         templateActions.push(`${projectContext.created ? "created" : "exists"}:${projectContext.path}`);
         hermesContextFile = projectContext.path;
-        const nextRoutes = buildHermesRoutes({ project: name, guildId: opts.guildId, channelIds, maps, repo, contextFile: projectContext.path });
+        const nextRoutes = buildHermesRoutes({ project: name, guildId: opts.guildId, channelIds, maps, repo, contextFile: projectContext.path, defaults, modes });
         await upsertProjectHermesRoutes(name, nextRoutes);
         hermesRoutesFile = CLICKITYCLANK_HERMES_ROUTES;
         hermesConfigFragment = CLICKITYCLANK_HERMES_CONFIG_FRAGMENT;
@@ -299,10 +310,12 @@ export function registerProject(program: Command) {
         const token = getToken(opts);
         if (!token) throw new Error("Missing Discord token (CLICKITYCLANK_DISCORD_TOKEN).");
 
-        const { maps: inputMaps, runtimeFromFile, repoFromFile, contextFileFromFile } = await resolveMaps(opts);
+        const { maps: inputMaps, runtimeFromFile, repoFromFile, contextFileFromFile, defaultsFromFile, modesFromFile } = await resolveMaps(opts);
         const runtime = resolveRuntime(opts, runtimeFromFile);
         const repo = opts.repo || repoFromFile;
         const contextFile = opts.contextFile || contextFileFromFile;
+        const defaults = defaultsFromFile;
+        const modes = modesFromFile;
         const maps = inputMaps;
 
         let cfg: any | undefined;
@@ -392,7 +405,7 @@ export function registerProject(program: Command) {
           const projectContext = await ensureProjectContext({ project: name, repo, maps, contextFile, overwrite: false });
           templateActions.push(`${projectContext.created ? "created" : "exists"}:${projectContext.path}`);
           hermesContextFile = projectContext.path;
-          const nextRoutes = buildHermesRoutes({ project: name, guildId: opts.guildId, channelIds, maps, repo, contextFile: projectContext.path });
+          const nextRoutes = buildHermesRoutes({ project: name, guildId: opts.guildId, channelIds, maps, repo, contextFile: projectContext.path, defaults, modes });
           await upsertProjectHermesRoutes(name, nextRoutes);
           hermesRoutesFile = CLICKITYCLANK_HERMES_ROUTES;
           hermesConfigFragment = CLICKITYCLANK_HERMES_CONFIG_FRAGMENT;
